@@ -1,0 +1,22 @@
+# Secrets / credentials — never commit these
+config/api_keys.json
+config/gmail_credentials.json
+config/gmail_token.json
+config/certs/*.key
+config/certs/*.pem
+*.env
+.env
+
+# Personal data (conversation memory, etc.)
+memory/long_term.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# Editors / OS cruft
+*.swp
