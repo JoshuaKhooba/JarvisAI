@@ -1,3 +1,19 @@
+"""
+file_controller.py — the "file_controller" tool (see main.py TOOL_DECLARATIONS).
+
+Manages files and folders: list, create, delete, move, copy, rename, read,
+write, find, disk usage, and desktop organization.
+
+Safety guard worth knowing: _is_safe_path() restricts every destructive
+operation (delete/move/etc.) to paths inside the user's home directory
+(_SAFE_ROOTS) — anything outside that is rejected before it touches disk.
+Deletions go through send2trash when available (recoverable, goes to the
+OS trash/recycle bin) rather than a permanent unlink.
+
+file_controller(...) is the entry point main.py's tool dispatcher calls;
+it reads parameters["action"] and routes to the matching operation.
+"""
+
 import os
 import shutil
 import platform
@@ -473,6 +489,9 @@ def file_controller(
     player=None,
     session_memory=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher — routes on
+    parameters["action"] to the matching file/folder operation, resolving
+    shortcuts like "desktop"/"downloads"/"documents"/"home" in `path`."""
     params = parameters or {}
     action = params.get("action", "").lower().strip()
     path   = params.get("path", "desktop")

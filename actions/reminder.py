@@ -1,3 +1,19 @@
+"""
+reminder.py — the "reminder" tool (see main.py TOOL_DECLARATIONS).
+
+A one-off, OS-native scheduled notification for a specific date/time — NOT
+the same thing as task_manager.py's Reminders-app integration (that's a
+persistent to-do list you check later; this is a single alarm that fires
+once, at a specific target_dt, via the OS's own scheduler so it works even
+if the app isn't running: Windows Task Scheduler (_schedule_windows),
+macOS launchd via a temporary LaunchAgent (_schedule_mac), or Linux
+at/systemd-run (_schedule_linux). Each writes a small standalone notify
+script (_write_notify_script) that just pops a native notification when
+the scheduled time arrives.
+
+reminder(...) is the entry point main.py's tool dispatcher calls.
+"""
+
 import json
 import os
 import platform
@@ -290,6 +306,9 @@ def reminder(
     player=None,
     session_memory=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher — parses date+time
+    into a target datetime and hands off to the matching OS-specific
+    _schedule_* function."""
 
     date_str = parameters.get("date", "").strip()
     time_str = parameters.get("time", "").strip()

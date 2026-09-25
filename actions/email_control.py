@@ -230,6 +230,11 @@ def email_control(
     player=None,
     session_memory=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher (the
+    "email_control" tool) — routes on parameters["action"]; see the module
+    docstring for the full action list. (get_unread_digest/get_unread_count
+    below are separate, non-tool entry points used by the morning briefing
+    and the HUD's live TODAY panel respectively.)"""
     params = parameters or {}
     action = params.get("action", "").lower().strip()
     result = "Unknown email action."

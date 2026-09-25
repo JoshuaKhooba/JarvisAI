@@ -1,5 +1,13 @@
 """
-System Monitor — background metric checks with voice alert support.
+system_monitor.py — background hardware telemetry + voice-alert thresholds.
+
+Unlike most action modules, this isn't triggered by a Gemini tool call —
+main.py instantiates one persistent SystemMonitor() (in JarvisLive.__init__)
+and its own _run_system_monitor() background task calls .check() every 10
+seconds for the whole life of the process, injecting a spoken alert into
+the live session when CPU/RAM/temp/GPU crosses a threshold (with a cooldown
+so it doesn't nag repeatedly). get_system_status() is the one-shot,
+stateless version used by the "system_status" tool action instead.
 Zero subprocess calls on all platforms — uses ctypes/pynvml/psutil/wmi only.
 """
 import ctypes

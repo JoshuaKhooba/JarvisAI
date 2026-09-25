@@ -1,3 +1,27 @@
+"""
+game_updater.py — the "game_updater" tool (see main.py TOOL_DECLARATIONS).
+
+Finds, lists, updates, and installs games on Steam and Epic Games Store,
+and can schedule a recurring update check (via the OS's own scheduler —
+Task Scheduler on Windows, launchd on macOS, systemd/cron on Linux).
+
+Layout of this file, top to bottom:
+  - _KNOWN_APPIDS: a hardcoded name → Steam AppID lookup table for common
+    games, so "update GTA V" doesn't need a live search every time.
+  - Steam helpers (_find_steam_*, _get_steam_games, _update_steam_games,
+    _install_steam_game, ...): locate the Steam install, read its library
+    folders/manifests directly off disk to list owned games, and drive the
+    Steam client via steam:// URLs or (when a game needs the install-location
+    dialog) simulated clicks/keystrokes to click through it.
+  - Epic helpers (_find_epic_*, _get_epic_games, _update_epic_games): same
+    idea for the Epic Games Launcher.
+  - Scheduling helpers (_schedule_*, _cancel_scheduled_update,
+    _get_schedule_status): register/remove an OS-level recurring task that
+    re-runs this updater unattended.
+  - game_updater(...): the single function main.py's tool dispatcher calls;
+    reads parameters["action"] and routes to the right helper above.
+"""
+
 import os
 import platform
 import re
@@ -930,6 +954,13 @@ def _get_schedule_status() -> str:
 
 
 def game_updater(parameters: dict, player=None, speak=None) -> str:
+    """
+    Entry point called from main.py's tool dispatcher. `parameters["action"]`
+    selects the operation (list | update | install | download_status |
+    schedule | cancel_schedule | schedule_status, ...) and `parameters["platform"]`
+    picks steam | epic | both — this function just routes to the matching
+    helper function above and returns its plain-string result.
+    """
     p         = parameters or {}
     action    = p.get("action",    "update").lower().strip()
     platform  = p.get("platform",  "both").lower().strip()

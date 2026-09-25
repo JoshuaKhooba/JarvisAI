@@ -85,17 +85,6 @@ from PyQt6.QtWidgets import (
     QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
 )
 
-# Optional: embed God's Eye View inside the JARVIS window. Must be imported
-# before the QApplication is created.
-try:
-    from PyQt6.QtWebEngineWidgets import QWebEngineView
-    from PyQt6.QtWebEngineCore import QWebEngineSettings, QWebEnginePage
-    _HAS_WEBENGINE = True
-except Exception:
-    QWebEngineView = None
-    _HAS_WEBENGINE = False
-
-
 def _base_dir() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).parent
@@ -126,27 +115,27 @@ class C:
     """Shared color palette — every widget in this file pulls its colors
     from here rather than hardcoding hex values, so the whole HUD's theme
     (cyan JARVIS look) stays consistent and changeable in one place."""
-    BG        = "#0a0a0f"
-    PANEL     = "#0f1018"
-    PANEL2    = "#13141d"
-    BORDER    = "#1e2029"
-    BORDER_B  = "#2a2d38"
-    BORDER_A  = "#23303a"
+    BG        = "#00060a"
+    PANEL     = "#010d14"
+    PANEL2    = "#010f18"
+    BORDER    = "#0d3347"
+    BORDER_B  = "#1a5c7a"
+    BORDER_A  = "#0f4060"
     PRI       = "#00d4ff"
-    PRI_DIM   = "#0a8fb0"
-    PRI_GHO   = "#07212b"
-    ACC       = "#ff8a3d"
-    ACC2      = "#ffd166"
-    GREEN     = "#34e3a0"
-    GREEN_D   = "#1f9e6e"
-    RED       = "#ff4d6a"
-    MUTED_C   = "#ff4d6a"
-    TEXT      = "#e8eaed"
-    TEXT_DIM  = "#6b6f7a"
-    TEXT_MED  = "#a3a7b1"
-    WHITE     = "#ffffff"
-    DARK      = "#07070b"
-    BAR_BG    = "#171923"
+    PRI_DIM   = "#007a99"
+    PRI_GHO   = "#001f2e"
+    ACC       = "#ff6b00"
+    ACC2      = "#ffcc00"
+    GREEN     = "#00ff88"
+    GREEN_D   = "#00aa55"
+    RED       = "#ff3355"
+    MUTED_C   = "#ff3366"
+    TEXT      = "#8ffcff"
+    TEXT_DIM  = "#3a8a9a"
+    TEXT_MED  = "#5ab8cc"
+    WHITE     = "#d8f8ff"
+    DARK      = "#000d14"
+    BAR_BG    = "#011520"
 
 
 # Ana renge (accent) bağlı anahtarlar — durum renkleri (ACC, GREEN, RED…) sabit kalır
@@ -236,9 +225,9 @@ def qcol(h: str, a: int = 255) -> QColor:
     c = QColor(h); c.setAlpha(a); return c
 
 
-_MONO_FAMILIES = ["JetBrains Mono", "SF Mono", "Menlo", "Cascadia Mono",
+_MONO_FAMILIES = ["SF Mono", "JetBrains Mono", "Menlo", "Cascadia Mono",
                   "Consolas", "DejaVu Sans Mono", "Courier New"]
-_UI_FAMILIES   = ["Inter", "SF Pro Display", "Segoe UI Variable", "Segoe UI",
+_UI_FAMILIES   = ["SF Pro Display", "Inter", "Segoe UI Variable", "Segoe UI",
                   "Helvetica Neue", "Noto Sans", "DejaVu Sans", "Arial"]
 
 
@@ -1165,7 +1154,7 @@ class _CameraPreview(QWidget):
             _CameraPreview {{
                 background: rgba(0, 6, 10, 242);
                 border: 1px solid {C.PRI};
-                border-radius: 10px;
+                border-radius: 6px;
             }}
         """)
         self.setFixedWidth(self._W)
@@ -1232,7 +1221,10 @@ class RemindersPanel(QWidget):
         lay.setContentsMargins(8, 6, 8, 8)
         lay.setSpacing(4)
 
-        hdr, self._tag = _hx_header("TASKS://OPEN", "00")
+        hdr = QLabel("☑ REMINDERS")
+        hdr.setFont(_hud_font(7, QFont.Weight.Bold))
+        hdr.setStyleSheet(f"color: {C.PRI}; background: transparent; "
+                           f"border-bottom: 1px solid {C.BORDER}; padding-bottom: 4px;")
         lay.addWidget(hdr)
 
         self._list = QListWidget()
@@ -1246,7 +1238,7 @@ class RemindersPanel(QWidget):
             }}
             QListWidget::item {{ padding: 3px 2px; border-bottom: 1px solid {C.BORDER}; }}
             QScrollBar:vertical {{ background: {C.BG}; width: 6px; border: none; }}
-            QScrollBar::handle:vertical {{ background: {C.BORDER_B}; border-radius: 5px; min-height: 16px; }}
+            QScrollBar::handle:vertical {{ background: {C.BORDER_B}; border-radius: 3px; min-height: 16px; }}
         """)
         lay.addWidget(self._list, stretch=1)
         self.set_tasks([])
@@ -1254,15 +1246,13 @@ class RemindersPanel(QWidget):
     def set_tasks(self, tasks: list[dict]):
         self._list.clear()
         if not tasks:
-            self._tag.setText("00")
-            item = QListWidgetItem("> queue empty — say \"remind me to…\"")
+            item = QListWidgetItem("No open reminders.")
             item.setForeground(QColor(C.TEXT_DIM))
             self._list.addItem(item)
             return
-        self._tag.setText(f"{len(tasks):02d}")
-        for i, t in enumerate(tasks, 1):
-            due = f"\n     ⏱ {t['due']}" if t.get("due") else ""
-            item = QListWidgetItem(f"[{i:02d}] {t['title']}{due}")
+        for t in tasks:
+            due = f"  —  {t['due']}" if t.get("due") else ""
+            item = QListWidgetItem(f"• {t['title']}{due}")
             item.setForeground(QColor(C.TEXT if not t.get("due") else C.ACC2))
             self._list.addItem(item)
 
@@ -1279,7 +1269,10 @@ class CalendarPanel(QWidget):
         lay.setContentsMargins(8, 6, 8, 8)
         lay.setSpacing(4)
 
-        hdr, self._tag = _hx_header("CAL://7D", "00")
+        hdr = QLabel("▤ CALENDAR")
+        hdr.setFont(_hud_font(7, QFont.Weight.Bold))
+        hdr.setStyleSheet(f"color: {C.PRI}; background: transparent; "
+                           f"border-bottom: 1px solid {C.BORDER}; padding-bottom: 4px;")
         lay.addWidget(hdr)
 
         self._list = QListWidget()
@@ -1293,7 +1286,7 @@ class CalendarPanel(QWidget):
             }}
             QListWidget::item {{ padding: 3px 2px; border-bottom: 1px solid {C.BORDER}; }}
             QScrollBar:vertical {{ background: {C.BG}; width: 6px; border: none; }}
-            QScrollBar::handle:vertical {{ background: {C.BORDER_B}; border-radius: 5px; min-height: 16px; }}
+            QScrollBar::handle:vertical {{ background: {C.BORDER_B}; border-radius: 3px; min-height: 16px; }}
         """)
         lay.addWidget(self._list, stretch=1)
         self.set_events([])
@@ -1301,15 +1294,13 @@ class CalendarPanel(QWidget):
     def set_events(self, events: list[dict]):
         self._list.clear()
         if not events:
-            self._tag.setText("00")
-            item = QListWidgetItem("> no events in next 7 days")
+            item = QListWidgetItem("No upcoming events.")
             item.setForeground(QColor(C.TEXT_DIM))
             self._list.addItem(item)
             return
-        self._tag.setText(f"{len(events):02d}")
         for ev in events:
-            when = ev["start"].strftime("%a %b %d · %I:%M %p").replace(" 0", " ")
-            item = QListWidgetItem(f"▸ {ev['title']}\n   {when}")
+            when = ev["start"].strftime("%a %b %d, %I:%M %p").replace(" 0", " ")
+            item = QListWidgetItem(f"• {ev['title']}\n   {when}")
             item.setForeground(QColor(C.ACC2))
             self._list.addItem(item)
 
@@ -1358,7 +1349,7 @@ class EarthGlobe(QWidget):
         expand_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent; color: {C.TEXT_DIM};
-                border: 1px solid {C.BORDER}; border-radius: 10px; padding: 0 5px;
+                border: 1px solid {C.BORDER}; border-radius: 6px; padding: 0 5px;
             }}
             QPushButton:hover {{ color: {C.PRI}; border-color: {C.BORDER_B}; }}
         """)
@@ -2066,7 +2057,7 @@ class GlobalOpsOverlay(QWidget):
         banner.setFont(_hud_font(12, QFont.Weight.Bold))
         banner.setStyleSheet(f"""
             color: {C.MUTED_C}; background: #140000;
-            border: 1px solid {C.MUTED_C}; border-radius: 12px;
+            border: 1px solid {C.MUTED_C}; border-radius: 8px;
             padding: 6px 22px;
         """)
         hdr.addWidget(banner)
@@ -2079,7 +2070,7 @@ class GlobalOpsOverlay(QWidget):
         close_btn.setStyleSheet("""
             QPushButton {
                 background: transparent; color: #9aa2a5;
-                border: 1px solid #3a4144; border-radius: 12px; padding: 0 10px;
+                border: 1px solid #3a4144; border-radius: 8px; padding: 0 10px;
             }
             QPushButton:hover { color: #e8ecec; border-color: #6a7276; }
         """)
@@ -2264,7 +2255,7 @@ class SetupOverlay(QWidget):
             SetupOverlay {{
                 background: rgba(0, 6, 10, 245);
                 border: 1px solid {C.BORDER_B};
-                border-radius: 10px;
+                border-radius: 6px;
             }}
         """)
 
@@ -2304,7 +2295,7 @@ class SetupOverlay(QWidget):
         self._key_input.setStyleSheet(f"""
             QLineEdit {{
                 background: #000d12; color: {C.TEXT};
-                border: 1px solid {C.BORDER}; border-radius: 12px; padding: 4px 8px;
+                border: 1px solid {C.BORDER}; border-radius: 8px; padding: 4px 8px;
             }}
             QLineEdit:focus {{ border: 1px solid {C.PRI}; }}
         """)
@@ -2342,7 +2333,7 @@ class SetupOverlay(QWidget):
         init_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent; color: {C.PRI};
-                border: 1px solid {C.PRI_DIM}; border-radius: 12px;
+                border: 1px solid {C.PRI_DIM}; border-radius: 8px;
             }}
             QPushButton:hover {{
                 background: {C.PRI_GHO}; border: 1px solid {C.PRI};
@@ -2360,14 +2351,14 @@ class SetupOverlay(QWidget):
                 btn.setStyleSheet(f"""
                     QPushButton {{
                         background: {fg}; color: {bg};
-                        border: none; border-radius: 12px; font-weight: bold;
+                        border: none; border-radius: 8px; font-weight: bold;
                     }}
                 """)
             else:
                 btn.setStyleSheet(f"""
                     QPushButton {{
                         background: #000d12; color: {C.TEXT_DIM};
-                        border: 1px solid {C.BORDER}; border-radius: 12px;
+                        border: 1px solid {C.BORDER}; border-radius: 8px;
                     }}
                     QPushButton:hover {{ color: {C.TEXT}; border: 1px solid {C.BORDER_B}; }}
                 """)
@@ -2488,7 +2479,7 @@ class CustomizeOverlay(QWidget):
             CustomizeOverlay {{
                 background: rgba(0, 6, 10, 245);
                 border: 1px solid {C.BORDER_B};
-                border-radius: 10px;
+                border-radius: 6px;
             }}
         """)
         lay = QVBoxLayout(self)
@@ -2503,7 +2494,7 @@ class CustomizeOverlay(QWidget):
             return w
 
         _fs = (f"QLineEdit {{ background: #000d12; color: {C.TEXT}; "
-               f"border: 1px solid {C.BORDER}; border-radius: 12px; padding: 4px 8px; }}"
+               f"border: 1px solid {C.BORDER}; border-radius: 8px; padding: 4px 8px; }}"
                f"QLineEdit:focus {{ border: 1px solid {C.PRI}; }}")
 
         lay.addWidget(_lbl("⚙  CUSTOMISE ASSISTANT", 12, True))
@@ -2542,7 +2533,7 @@ class CustomizeOverlay(QWidget):
         df_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent; color: {C.TEXT_MED};
-                border: 1px solid {C.BORDER}; border-radius: 12px;
+                border: 1px solid {C.BORDER}; border-radius: 8px;
             }}
             QPushButton:hover {{ color: {C.TEXT}; border-color: {C.BORDER_B}; }}
         """)
@@ -2579,7 +2570,7 @@ class CustomizeOverlay(QWidget):
         save_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent; color: {C.PRI};
-                border: 1px solid {C.PRI_DIM}; border-radius: 12px;
+                border: 1px solid {C.PRI_DIM}; border-radius: 8px;
             }}
             QPushButton:hover {{ background: {C.PRI_GHO}; border: 1px solid {C.PRI}; }}
         """)
@@ -2593,7 +2584,7 @@ class CustomizeOverlay(QWidget):
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent; color: {C.TEXT_MED};
-                border: 1px solid {C.BORDER}; border-radius: 12px;
+                border: 1px solid {C.BORDER}; border-radius: 8px;
             }}
             QPushButton:hover {{ color: {C.TEXT}; border-color: {C.BORDER_B}; }}
         """)
@@ -2659,7 +2650,7 @@ class ClipboardPanel(QWidget):
             ClipboardPanel {{
                 background: rgba(0, 8, 14, 248);
                 border: 1px solid {C.BORDER_B};
-                border-radius: 10px;
+                border-radius: 6px;
             }}
         """)
         self.setFixedWidth(self._W)
@@ -2687,7 +2678,7 @@ class ClipboardPanel(QWidget):
         self._preview.setFont(_hud_font(8))
         self._preview.setStyleSheet(f"""
             color: {C.TEXT}; background: {C.PANEL2};
-            border: 1px solid {C.BORDER}; border-radius: 12px; padding: 4px 6px;
+            border: 1px solid {C.BORDER}; border-radius: 8px; padding: 4px 6px;
         """)
         self._preview.setWordWrap(False)
         self._preview.setFixedHeight(28)
@@ -2695,7 +2686,7 @@ class ClipboardPanel(QWidget):
 
         btn_row = QHBoxLayout(); btn_row.setSpacing(4)
         _bs = (f"QPushButton {{ background: {C.PANEL2}; color: {C.TEXT_MED}; "
-               f"border: 1px solid {C.BORDER}; border-radius: 10px; }}"
+               f"border: 1px solid {C.BORDER}; border-radius: 6px; }}"
                f"QPushButton:hover {{ color: {C.PRI}; border-color: {C.BORDER_B}; }}")
         for label, cmd_fmt in [
             ("TRANSLATE", "Translate this text to English: {text}"),
@@ -2812,7 +2803,7 @@ class RemoteKeyOverlay(QWidget):
             color: {C.ACC};
             background: {C.PANEL2};
             border: 1px solid {C.BORDER_B};
-            border-radius: 12px;
+            border-radius: 8px;
             padding: 6px 4px;
             letter-spacing: 10px;
         """)
@@ -2833,7 +2824,7 @@ class RemoteKeyOverlay(QWidget):
         new_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {C.PANEL}; color: {C.PRI};
-                border: 1px solid {C.PRI_DIM}; border-radius: 8px;
+                border: 1px solid {C.PRI_DIM}; border-radius: 5px;
             }}
             QPushButton:hover {{ background: {C.PRI_GHO}; border: 1px solid {C.PRI}; }}
         """)
@@ -2847,7 +2838,7 @@ class RemoteKeyOverlay(QWidget):
         close_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent; color: {C.TEXT_MED};
-                border: 1px solid {C.BORDER}; border-radius: 8px;
+                border: 1px solid {C.BORDER}; border-radius: 5px;
             }}
             QPushButton:hover {{ color: {C.TEXT}; border: 1px solid {C.BORDER_B}; }}
         """)
@@ -2914,7 +2905,7 @@ class RemoteKeyOverlay(QWidget):
             color: {C.GREEN};
             background: rgba(34,197,94,0.08);
             border: 2px solid rgba(34,197,94,0.4);
-            border-radius: 12px;
+            border-radius: 8px;
             padding: 6px 4px;
             letter-spacing: 4px;
         """)
@@ -2944,7 +2935,7 @@ class RemoteKeyOverlay(QWidget):
                     color: {C.ACC};
                     background: {C.PANEL2};
                     border: 1px solid {C.BORDER_B};
-                    border-radius: 12px;
+                    border-radius: 8px;
                     padding: 6px 4px;
                     letter-spacing: 10px;
                 """)
@@ -2994,9 +2985,9 @@ class CommandInput(QLineEdit):
         comp.setMaxVisibleItems(7)
         comp.popup().setStyleSheet(f"""
             QListView {{ background: {C.PANEL2}; color: {C.TEXT};
-                border: 1px solid {C.PRI_DIM}; border-radius: 12px; padding: 4px;
+                border: 1px solid {C.PRI_DIM}; border-radius: 8px; padding: 4px;
                 outline: none; }}
-            QListView::item {{ padding: 5px 8px; border-radius: 10px; }}
+            QListView::item {{ padding: 5px 8px; border-radius: 6px; }}
             QListView::item:selected {{ background: {C.PRI_GHO}; color: {C.WHITE}; }}
         """)
         self.setCompleter(comp)
@@ -3099,11 +3090,11 @@ class CommandPalette(QWidget):
         self._list.setFont(_hud_font(10))
         self._list.setStyleSheet(f"""
             QListWidget {{ background: transparent; color: {C.TEXT}; border: none; outline: none; }}
-            QListWidget::item {{ padding: 8px 10px; border-radius: 12px; }}
+            QListWidget::item {{ padding: 8px 10px; border-radius: 8px; }}
             QListWidget::item:selected {{ background: {C.PRI_GHO}; color: {C.WHITE}; }}
             QListWidget::item:hover {{ background: {C.PRI_GHO}; }}
             QScrollBar:vertical {{ background: transparent; width: 6px; border: none; }}
-            QScrollBar::handle:vertical {{ background: {C.BORDER_B}; border-radius: 5px; min-height: 24px; }}
+            QScrollBar::handle:vertical {{ background: {C.BORDER_B}; border-radius: 3px; min-height: 24px; }}
             QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; border: none; }}
             QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
         """)
@@ -3181,380 +3172,6 @@ class CommandPalette(QWidget):
             QTimer.singleShot(0, fn)
 
 
-
-# ── Hacker-style panel chrome ─────────────────────────────────────────────
-def _hx_header(title: str, tag: str = "") -> tuple[QWidget, QLabel]:
-    """Terminal-style panel header: ▌TITLE ........ [tag]. Returns (widget, tag_label)."""
-    w = QWidget()
-    w.setStyleSheet(f"background: transparent; border: none; border-bottom: 1px solid {C.BORDER};")
-    h = QHBoxLayout(w); h.setContentsMargins(0, 0, 0, 4); h.setSpacing(6)
-    bar = QLabel("▌"); bar.setFont(_hud_font(8, QFont.Weight.Bold))
-    bar.setStyleSheet(f"color: {C.PRI}; border: none;")
-    t = QLabel(title); t.setFont(_hud_font(7, QFont.Weight.Bold))
-    t.setStyleSheet(f"color: {C.WHITE}; border: none; letter-spacing: 2px;")
-    h.addWidget(bar); h.addWidget(t); h.addStretch()
-    tg = QLabel(tag); tg.setFont(_hud_font(7))
-    tg.setStyleSheet(f"color: {C.GREEN}; border: none;")
-    h.addWidget(tg)
-    return w, tg
-
-
-# Every JARVIS capability, grouped for the Systems Matrix dashboard.
-# (feature label, glyph, [tool names that belong to it])
-_FEATURES = [
-    ("VOICE LINK",  "◉", ["__voice__"]),
-    ("WEB SEARCH",  "⌕", ["web_search"]),
-    ("BROWSER",     "▣", ["browser_control"]),
-    ("APPS",        "▶", ["open_app"]),
-    ("EMAIL",       "✉", ["email_control"]),
-    ("CALENDAR",    "▤", ["calendar_control", "meeting_prep"]),
-    ("REMINDERS",   "☑", ["reminder", "task_manager"]),
-    ("HABITS",      "♦", ["habit_tracker"]),
-    ("FOCUS",       "◷", ["focus_timer"]),
-    ("WEATHER",     "☂", ["weather_report"]),
-    ("FLIGHTS",     "✈", ["flight_finder"]),
-    ("MESSAGES",    "✆", ["send_message"]),
-    ("FILES",       "▦", ["file_controller", "file_processor"]),
-    ("VISION",      "◈", ["screen_process", "close_camera"]),
-    ("CODE / DEV",  "⌘", ["code_helper", "dev_agent"]),
-    ("PC CONTROL",  "⚙", ["computer_control", "computer_settings", "desktop_control", "manage_monitor"]),
-    ("SYSTEM",      "≡", ["system_status", "shutdown_jarvis"]),
-    ("MEDIA",       "♫", ["youtube_video", "game_updater"]),
-    ("NOTES",       "✎", ["obsidian_control"]),
-    ("MEMORY",      "⧉", ["save_memory"]),
-    ("GOD'S EYE",   "◎", ["gods_eye", "gev_*"]),
-]
-
-
-class _FeatureTile(QWidget):
-    clicked = pyqtSignal(str)
-
-    def __init__(self, label: str, glyph: str, parent=None):
-        super().__init__(parent)
-        self.label = label; self.glyph = glyph
-        self.count = 0; self.last = None; self.state = "idle"; self.detail = ""
-        self._pulse = 0.0
-        self.setMinimumSize(78, 40)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setMouseTracking(True); self._hover = False
-        self._upd_tip()
-
-    def enterEvent(self, e): self._hover = True; self.update()
-    def leaveEvent(self, e): self._hover = False; self.update()
-    def mousePressEvent(self, e): self.clicked.emit(self.label)
-
-    def _upd_tip(self):
-        when = time.strftime("%H:%M:%S", time.localtime(self.last)) if self.last else "never"
-        self.setToolTip(f"{self.label}\nstatus: {self.state}\ncalls: {self.count}\nlast: {when}"
-                        + (f"\n› {self.detail}" if self.detail else ""))
-
-    def mark(self, state: str, detail: str = ""):
-        if state == "run":
-            self.count += 1; self.last = time.time(); self._pulse = 1.0
-        self.state = state
-        if detail:
-            self.detail = detail[:140]
-        self._upd_tip(); self.update()
-
-    def tick(self):
-        if self.state == "run" or self._pulse > 0:
-            self._pulse = max(0.0, self._pulse - 0.04) if self.state != "run" else (self._pulse + 0.08) % 1.0
-            self.update()
-
-    def paintEvent(self, _):
-        p = QPainter(self); p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
-        col = {"idle": C.TEXT_DIM, "ok": C.GREEN, "run": C.ACC2, "err": C.RED, "live": C.PRI}.get(self.state, C.TEXT_DIM)
-        bg = QColor(C.PANEL2)
-        if self._hover: bg = QColor(C.PRI_GHO)
-        p.setBrush(bg)
-        pen = QPen(QColor(col if self.state != "idle" else C.BORDER)); pen.setWidthF(1.0)
-        p.setPen(pen); p.drawRoundedRect(r, 8, 8)
-        if self.state == "run":
-            glow = QColor(col); glow.setAlphaF(0.25 + 0.25 * math.sin(self._pulse * math.tau))
-            p.setPen(QPen(glow, 3)); p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 7, 7)
-        # glyph + label
-        p.setPen(QColor(col if self.state != "idle" else C.TEXT_MED))
-        p.setFont(_hud_font(10)); p.drawText(QRectF(r.x() + 6, r.y() + 3, 18, 18), Qt.AlignmentFlag.AlignCenter, self.glyph)
-        p.setPen(QColor(C.WHITE if self.state != "idle" else C.TEXT_MED))
-        p.setFont(_hud_font(6, QFont.Weight.Bold))
-        _w = int(r.width() - 30)
-        _txt = p.fontMetrics().elidedText(self.label, Qt.TextElideMode.ElideRight, _w) if p.fontMetrics().horizontalAdvance(self.label) > _w else self.label
-        p.drawText(QRectF(r.x() + 25, r.y() + 3, _w, 18),
-                   Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, _txt)
-        # stats line
-        p.setFont(_hud_font(6)); p.setPen(QColor(C.TEXT_DIM))
-        when = time.strftime("%H:%M", time.localtime(self.last)) if self.last else "--:--"
-        p.drawText(QRectF(r.x() + 7, r.bottom() - 16, r.width() - 14, 14),
-                   Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, f"×{self.count:<3} {when}")
-        # status dot
-        d = QColor(col); p.setPen(Qt.PenStyle.NoPen); p.setBrush(d)
-        p.drawEllipse(QPointF(r.right() - 8, r.bottom() - 9), 2.6, 2.6)
-        p.end()
-
-
-class SystemsMatrix(QWidget):
-    """Dashboard grid of every JARVIS capability with live status, call
-    counts, last-used time and the last result (hover a tile). Fed by
-    MainWindow.tool_event() which main.py calls around every tool run."""
-    feature_clicked = pyqtSignal(str)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setObjectName("SysMatrix")
-        self.setStyleSheet(f"QWidget#SysMatrix {{ background: {C.PANEL2}; border: 1px solid {C.BORDER}; border-radius: 12px; }}")
-        v = QVBoxLayout(self); v.setContentsMargins(8, 6, 8, 8); v.setSpacing(5)
-        hdr, self._tag = _hx_header("SYSTEMS://MATRIX", "0 OPS")
-        v.addWidget(hdr)
-        from PyQt6.QtWidgets import QGridLayout
-        grid = QGridLayout(); grid.setSpacing(4)
-        self._tiles: dict[str, _FeatureTile] = {}
-        self._tool_map: dict[str, str] = {}
-        cols = 3
-        for i, (label, glyph, tools) in enumerate(_FEATURES):
-            t = _FeatureTile(label, glyph)
-            t.clicked.connect(self.feature_clicked.emit)
-            grid.addWidget(t, i // cols, i % cols)
-            self._tiles[label] = t
-            for tn in tools:
-                self._tool_map[tn] = label
-        v.addLayout(grid, stretch=1)
-        self._feed = QLabel("> awaiting first command_")
-        self._feed.setFont(_hud_font(7)); self._feed.setStyleSheet(f"color: {C.GREEN}; background: transparent; border: none;")
-        v.addWidget(self._feed)
-        self._ops = 0
-        self._tmr = QTimer(self); self._tmr.timeout.connect(self._tick); self._tmr.start(50)
-        self._cursor = True; self._ctmr = QTimer(self); self._ctmr.timeout.connect(self._blink); self._ctmr.start(600)
-        self._last_line = "> awaiting first command"
-
-    def _blink(self):
-        self._cursor = not self._cursor
-        self._feed.setText(self._last_line + ("_" if self._cursor else " "))
-
-    def _tick(self):
-        for t in self._tiles.values():
-            t.tick()
-
-    def _label_for(self, tool: str) -> str | None:
-        if tool in self._tool_map:
-            return self._tool_map[tool]
-        if tool.startswith("gev_"):
-            return self._tool_map.get("gev_*")
-        return None
-
-    def tool_event(self, tool: str, phase: str, detail: str = ""):
-        lab = self._label_for(tool)
-        if phase == "run":
-            self._ops += 1; self._tag.setText(f"{self._ops} OPS")
-        if lab:
-            state = {"run": "run", "done": "ok", "error": "err"}.get(phase, phase)
-            self._tiles[lab].mark(state, detail)
-        stamp = time.strftime("%H:%M:%S")
-        verb = {"run": "exec", "done": "ok  ", "error": "FAIL"}.get(phase, phase)
-        self._last_line = f"> {stamp} {verb} {tool}"[:64]
-        self._feed.setText(self._last_line + "_")
-
-    def set_voice_state(self, state: str):
-        t = self._tiles.get("VOICE LINK")
-        if not t: return
-        st = {"LISTENING": "ok", "SPEAKING": "live", "THINKING": "run", "MUTED": "err"}.get(state.upper(), "idle")
-        t.state = st; t.detail = state.lower(); t._upd_tip(); t.update()
-
-    def set_feature_state(self, label: str, state: str, detail: str = ""):
-        t = self._tiles.get(label)
-        if t:
-            t.state = state; t.detail = detail or t.detail; t._upd_tip(); t.update()
-
-
-class GeoIntelPanel(QWidget):
-    """LOCATION → GEO://INTEL. A photorealistic Cesium globe (Esri World
-    Imagery, the same keyless imagery God's Eye uses) with a live GPS fix
-    readout and weather (Open-Meteo). Falls back to the vector EarthGlobe
-    when the embedded web viewer isn't installed."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setObjectName("GeoIntel")
-        self.setStyleSheet(f"QWidget#GeoIntel {{ background: {C.PANEL2}; border: 1px solid {C.BORDER}; border-radius: 12px; }}")
-        self.setMinimumSize(200, 180)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        v = QVBoxLayout(self); v.setContentsMargins(8, 6, 8, 8); v.setSpacing(5)
-        hdr, self._tag = _hx_header("GEO://INTEL", "NO FIX")
-        lay = hdr.layout()
-        self._on_expand = None
-        for txt, fn, tip in (("◉ GOD'S EYE", lambda: self._on_gev and self._on_gev(), "Open this location in God's Eye View"),
-                             ("⛶", lambda: self._on_expand and self._on_expand(), "Global Ops view")):
-            b = QPushButton(txt); b.setFixedHeight(18); b.setFont(_hud_font(6, QFont.Weight.Bold))
-            b.setToolTip(tip); b.setCursor(Qt.CursorShape.PointingHandCursor)
-            b.setStyleSheet(f"""QPushButton {{ background: transparent; color: {C.TEXT_DIM};
-                border: 1px solid {C.BORDER_B}; border-radius: 9px; padding: 0 7px; }}
-                QPushButton:hover {{ color: {C.PRI}; border-color: {C.PRI}; }}""")
-            b.clicked.connect(fn); lay.addWidget(b)
-        self._on_gev = None
-        v.addWidget(hdr)
-        self._loc = None
-        self._loaded = False
-        self._view = None
-        if _HAS_WEBENGINE:
-            self._view = QWebEngineView()
-            self._view.setStyleSheet("background: #000; border: none;")
-            st = self._view.settings()
-            for attr, on in (("WebGLEnabled", True), ("Accelerated2dCanvasEnabled", True),
-                             ("LocalContentCanAccessRemoteUrls", True), ("ScrollAnimatorEnabled", False)):
-                a = getattr(QWebEngineSettings.WebAttribute, attr, None)
-                if a is not None:
-                    st.setAttribute(a, on)
-            pg = self._view.page()
-            try:
-                pg.setBackgroundColor(QColor("#000000"))
-            except Exception:
-                pass
-            if hasattr(pg, "permissionRequested"):          # Qt ≥ 6.8
-                pg.permissionRequested.connect(lambda perm: perm.grant())
-            elif hasattr(pg, "featurePermissionRequested"):
-                pg.featurePermissionRequested.connect(
-                    lambda origin, feat: pg.setFeaturePermission(
-                        origin, feat, QWebEnginePage.PermissionPolicy.PermissionGrantedByUser))
-            self._view.loadFinished.connect(self._on_loaded)
-            self._view.setUrl(QUrl.fromLocalFile(str(BASE_DIR / "assets" / "geo_globe.html")))
-            v.addWidget(self._view, stretch=1)
-        else:
-            self._fallback = _EarthCanvas(theme="cyan")
-            v.addWidget(self._fallback, stretch=1)
-            self._wx = QLabel("WX  --"); self._wx.setFont(_hud_font(7))
-            self._wx.setStyleSheet(f"color: {C.TEXT_MED}; border: none; background: transparent;")
-            v.addWidget(self._wx)
-
-    def _on_loaded(self, ok: bool):
-        self._loaded = ok
-        if ok and self._loc:
-            self._push()
-
-    def _push(self):
-        lat, lon, city, src = self._loc
-        self._view.page().runJavaScript(
-            f"window.jarvisSetLocation && jarvisSetLocation({lat}, {lon}, {json.dumps(city)}, {json.dumps(src)})")
-
-    def set_location(self, lat, lon, city: str = "", source: str = "ip", weather: dict | None = None):
-        if lat is None or lon is None:
-            return
-        self._tag.setText(f"{float(lat):.3f}, {float(lon):.3f}")
-        new = (float(lat), float(lon), city or "", source or "ip")
-        changed = new != self._loc
-        self._loc = new
-        if self._view is not None:
-            if self._loaded and changed:
-                self._push()
-        else:
-            self._fallback.set_location(lat, lon, city)
-            if weather:
-                self._wx.setText(f"WX  {weather.get('temp', '--')}°  {weather.get('condition', '')}  "
-                                 f"wind {weather.get('wind', '--')}")
-
-    def set_expand_callback(self, cb):
-        self._on_expand = cb
-
-    def set_gods_eye_callback(self, cb):
-        self._on_gev = cb
-
-
-class GodsEyePanel(QWidget):
-    """Hosts God's Eye View (3D live globe) inside JARVIS. Uses an embedded
-    Chromium view when PyQt6-WebEngine is installed; otherwise shows a
-    launch card that opens GEV in the browser."""
-    back_requested = pyqtSignal()
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._url = "http://localhost:4173/"
-        self.setStyleSheet(f"background: {C.BG};")
-        v = QVBoxLayout(self); v.setContentsMargins(10, 10, 10, 10); v.setSpacing(8)
-
-        bar = QFrame()
-        bar.setStyleSheet(f"""QFrame {{ background: {C.PANEL}; border: 1px solid {C.BORDER};
-            border-radius: 14px; }} QLabel {{ border: none; background: transparent; }}""")
-        h = QHBoxLayout(bar); h.setContentsMargins(14, 6, 8, 6); h.setSpacing(8)
-        self._dot = QLabel("●"); self._dot.setFont(_hud_font(9))
-        self._dot.setStyleSheet(f"color: {C.ACC2};")
-        h.addWidget(self._dot)
-        t = QLabel("GOD'S EYE VIEW"); t.setFont(_hud_font(9, QFont.Weight.Bold))
-        t.setStyleSheet(f"color: {C.WHITE}; letter-spacing: 2px;")
-        h.addWidget(t)
-        self._status = QLabel("Standing by"); self._status.setFont(_ui_font(9))
-        self._status.setStyleSheet(f"color: {C.TEXT_DIM};")
-        h.addWidget(self._status); h.addStretch()
-        hint = QLabel('Say "fly to Tokyo" · "show flights"')
-        hint.setFont(_ui_font(8)); hint.setStyleSheet(f"color: {C.TEXT_DIM};")
-        h.addWidget(hint); h.addSpacing(6)
-        for label, fn in (("⟳", self.reload), ("↗  BROWSER", self._open_external), ("✕  CLOSE", self.back_requested.emit)):
-            b = QPushButton(label); b.setFont(_hud_font(8, QFont.Weight.Bold))
-            b.setCursor(Qt.CursorShape.PointingHandCursor); b.setFixedHeight(26)
-            b.setStyleSheet(f"""QPushButton {{ color: {C.TEXT_MED}; background: {C.PANEL2};
-                border: 1px solid {C.BORDER_B}; border-radius: 10px; padding: 0 10px; }}
-                QPushButton:hover {{ color: {C.PRI}; border-color: {C.PRI}; background: {C.PRI_GHO}; }}""")
-            b.clicked.connect(fn); h.addWidget(b)
-        v.addWidget(bar)
-
-        self._frame = QFrame()
-        self._frame.setStyleSheet(f"QFrame {{ background: #000; border: 1px solid {C.BORDER}; border-radius: 16px; }}")
-        fv = QVBoxLayout(self._frame); fv.setContentsMargins(1, 1, 1, 1)
-        self._view = None
-        if _HAS_WEBENGINE:
-            self._view = QWebEngineView()
-            st = self._view.settings()
-            for attr in ("WebGLEnabled", "Accelerated2dCanvasEnabled", "LocalContentCanAccessRemoteUrls",
-                         "PlaybackRequiresUserGesture"):
-                a = getattr(QWebEngineSettings.WebAttribute, attr, None)
-                if a is not None:
-                    st.setAttribute(a, attr != "PlaybackRequiresUserGesture")
-            self._view.page().featurePermissionRequested.connect(self._grant) if hasattr(
-                self._view.page(), "featurePermissionRequested") else None
-            self._view.loadFinished.connect(
-                lambda ok: self.set_status("Live" if ok else "Loading… (server starting)", ok))
-            fv.addWidget(self._view)
-        else:
-            card = QLabel("God's Eye View opens in your browser.\n\n"
-                          "To show it right here inside JARVIS, install the embedded viewer once:\n"
-                          "venv/bin/pip install PyQt6-WebEngine")
-            card.setAlignment(Qt.AlignmentFlag.AlignCenter); card.setWordWrap(True)
-            card.setFont(_ui_font(11)); card.setStyleSheet(f"color: {C.TEXT_MED}; border: none;")
-            fv.addWidget(card)
-        v.addWidget(self._frame, stretch=1)
-
-    def _grant(self, origin, feature):
-        try:
-            self._view.page().setFeaturePermission(
-                origin, feature, QWebEnginePage.PermissionPolicy.PermissionGrantedByUser)
-        except Exception:
-            pass
-
-    @property
-    def embedded(self) -> bool:
-        return self._view is not None
-
-    def set_status(self, text: str, live: bool = False):
-        self._status.setText(text)
-        self._dot.setStyleSheet(f"color: {C.GREEN if live else C.ACC2};")
-
-    def load(self, url: str | None = None):
-        if url:
-            self._url = url
-        if self._view is not None:
-            if self._view.url().toString().rstrip("/") != self._url.rstrip("/"):
-                self.set_status("Connecting…")
-                self._view.setUrl(QUrl(self._url))
-
-    def reload(self):
-        if self._view is not None:
-            self._view.setUrl(QUrl(self._url))
-        else:
-            self._open_external()
-
-    def _open_external(self):
-        import webbrowser
-        webbrowser.open(self._url)
-
-
 class MainWindow(QMainWindow):
     """
     Assembles every widget above into the actual window: the avatar orb,
@@ -3580,9 +3197,6 @@ class MainWindow(QMainWindow):
     _cam_frame_sig  = pyqtSignal(bytes)      # live camera frame → HUD area
     _clipboard_sig  = pyqtSignal(str)        # clipboard text changed (thread-safe)
     _today_sig      = pyqtSignal(dict)       # slow-fetched TODAY panel data (thread-safe)
-    _tool_sig       = pyqtSignal(str, str, str)   # (tool, phase, detail) → Systems Matrix
-    _gev_show_sig   = pyqtSignal(str)        # show God's Eye inside JARVIS (url)
-    _gev_hide_sig   = pyqtSignal()
 
     def __init__(self, face_path: str):
         super().__init__()
@@ -3698,26 +3312,8 @@ class MainWindow(QMainWindow):
         self._center_split.setStretchFactor(1, 2)
         self._center_split.setStretchFactor(2, 1)
         self._center_split.setCollapsible(0, False)
-        # Main view stack: 0 = JARVIS HUD column, 1 = God's Eye View
-        self._gev_panel = GodsEyePanel()
-        self._gev_panel.back_requested.connect(lambda: self._set_mode("jarvis"))
-        self._main_stack = QStackedWidget()
-        self._main_stack.addWidget(self._center_split)
-        self._main_stack.addWidget(self._gev_panel)
-        body.addWidget(self._main_stack, stretch=5)
-        self._gev_show_sig.connect(self._on_gev_show)
-        self._tool_sig.connect(self._sys_matrix.tool_event)
-        self._state_sig.connect(self._sys_matrix.set_voice_state)
-        self._gev_poll = QTimer(self); self._gev_poll.timeout.connect(self._poll_gev_state); self._gev_poll.start(3000)
-        self._gev_hide_sig.connect(lambda: self._set_mode("jarvis"))
-        try:
-            from actions import gods_eye as _ge
-            if self._gev_panel.embedded:
-                _ge.EMBED_HANDLER = self._gev_show_sig.emit
-            _ge.CLOSE_HANDLER = self._gev_hide_sig.emit
-        except Exception as e:
-            print(f"[UI] God's Eye hook unavailable: {e}")
-        QTimer.singleShot(0, lambda: self._center_split.setSizes([330, 400, 0]))
+        body.addWidget(self._center_split, stretch=5)
+        QTimer.singleShot(0, lambda: self._center_split.setSizes([440, 260, 0]))
 
         self._right_panel = self._build_right_panel()
         body.addWidget(self._right_panel, stretch=0)
@@ -4339,14 +3935,6 @@ class MainWindow(QMainWindow):
             self._proc_lbl.setText(f"PROC  {proc_count}")
         except Exception:
             self._proc_lbl.setText("PROC  --")
-        try:
-            b = psutil.sensors_battery()
-            if b is not None:
-                self._bat_lbl.setText(f"PWR  {int(b.percent)}%{' ⚡' if b.power_plugged else ''}")
-            else:
-                self._bat_lbl.setText("PWR  AC")
-        except Exception:
-            pass
 
         # Fast, local-only reads (small JSON file only) — safe inline on the
         # UI thread, unlike the calendar/email/task fetches which involve
@@ -4428,15 +4016,6 @@ class MainWindow(QMainWindow):
                 data["lat"]  = loc.get("lat")
                 data["lon"]  = loc.get("lon")
                 data["city"] = loc.get("city", "")
-                data["source"] = loc.get("source", "ip")
-                try:
-                    from actions.weather import get_current_weather
-                    wx = get_current_weather(float(data["lat"]), float(data["lon"]))
-                    if wx:
-                        data["weather"] = {"temp": round(wx["temp_f"]), "condition": wx["condition"],
-                                           "wind": f"{round(wx['wind_mph'])} mph"}
-                except Exception as e:
-                    print(f"[UI] Weather fetch skipped: {e}")
         except Exception as e:
             print(f"[UI] Location fetch skipped: {e}")
 
@@ -4456,7 +4035,6 @@ class MainWindow(QMainWindow):
         self._calendar_panel.set_events(data.get("events", []))
         self._earth_globe.set_location(
             data.get("lat"), data.get("lon"), data.get("city", ""),
-            data.get("source", "ip"), data.get("weather"),
         )
 
     def _spawn_today_fetch(self):
@@ -4494,28 +4072,18 @@ class MainWindow(QMainWindow):
         self._drawer_btn.clicked.connect(self._toggle_drawer)
         lay.addWidget(self._drawer_btn)
         lay.addSpacing(6)
-        seg = QFrame()
-        seg.setStyleSheet(f"QFrame {{ background: {C.PANEL}; border: 1px solid {C.BORDER_B}; border-radius: 14px; }}")
-        seg.setFixedHeight(32)
-        sl = QHBoxLayout(seg); sl.setContentsMargins(3, 3, 3, 3); sl.setSpacing(2)
-        self._mode_btns = {}
-        for key, label in (("jarvis", "◎  JARVIS"), ("gev", "◉  GOD'S EYE")):
-            b = QPushButton(label); b.setCheckable(True); b.setFixedHeight(24)
-            b.setFont(_hud_font(8, QFont.Weight.Bold))
-            b.setCursor(Qt.CursorShape.PointingHandCursor)
-            b.setStyleSheet(f"""
-                QPushButton {{ background: transparent; color: {C.TEXT_DIM}; border: none;
-                    border-radius: 11px; padding: 0 12px; }}
-                QPushButton:hover {{ color: {C.WHITE}; }}
-                QPushButton:checked {{ background: {C.PRI_GHO}; color: {C.PRI};
-                    border: 1px solid {C.PRI_DIM}; }}""")
-            sl.addWidget(b); self._mode_btns[key] = b
-        self._mode_btns["jarvis"].setChecked(True)
-        self._mode_btns["jarvis"].clicked.connect(lambda: self._set_mode("jarvis"))
-        self._mode_btns["gev"].clicked.connect(self._open_gods_eye)
-        self._mode_btns["gev"].setToolTip("God's Eye View (Ctrl+G) — or say \"Open God's Eye\"")
-        self._gev_btn = self._mode_btns["gev"]
-        lay.addWidget(seg, alignment=Qt.AlignmentFlag.AlignVCenter)
+        self._gev_btn = QPushButton("◉  GOD'S EYE")
+        self._gev_btn.setFixedHeight(26)
+        self._gev_btn.setFont(_hud_font(8, QFont.Weight.Bold))
+        self._gev_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._gev_btn.setToolTip("Open God's Eye View — or just say \"Open God's Eye\"")
+        self._gev_btn.setStyleSheet(f"""
+            QPushButton {{ background: transparent; color: {C.PRI};
+                border: 1px solid {C.PRI_DIM}; border-radius: 13px; padding: 0 12px; }}
+            QPushButton:hover {{ background: {C.PRI_GHO}; border-color: {C.PRI}; }}
+        """)
+        self._gev_btn.clicked.connect(self._open_gods_eye)
+        lay.addWidget(self._gev_btn)
         lay.addStretch()
 
         mid = QVBoxLayout(); mid.setSpacing(1)
@@ -4562,7 +4130,10 @@ class MainWindow(QMainWindow):
         lay.setContentsMargins(8, 10, 8, 10)
         lay.setSpacing(6)
 
-        hdr, self._sys_tag = _hx_header("SYS://MON", "●")
+        hdr = QLabel("◈ SYS MONITOR")
+        hdr.setFont(_hud_font(7, QFont.Weight.Bold))
+        hdr.setStyleSheet(f"color: {C.PRI}; background: transparent; "
+                          f"border-bottom: 1px solid {C.BORDER}; padding-bottom: 4px;")
         lay.addWidget(hdr)
         lay.addSpacing(2)
 
@@ -4602,25 +4173,15 @@ class MainWindow(QMainWindow):
         os_lbl.setStyleSheet(f"color: {C.ACC2}; background: transparent; border: none;")
         ip_lay.addWidget(os_lbl)
 
-        import socket as _sock
-        self._host_lbl = QLabel(f"HOST {(_sock.gethostname().split('.')[0])[:12]}")
-        self._ip_lbl   = QLabel("IP   --")
-        self._bat_lbl  = QLabel("PWR  --")
-        for l in (self._host_lbl, self._ip_lbl, self._bat_lbl):
-            l.setFont(_hud_font(7)); l.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent; border: none;")
-            ip_lay.addWidget(l)
-        try:
-            s_ = _sock.socket(_sock.AF_INET, _sock.SOCK_DGRAM); s_.connect(("8.8.8.8", 80))
-            self._ip_lbl.setText(f"IP   {s_.getsockname()[0]}"); s_.close()
-        except Exception:
-            pass
-
         lay.addWidget(info_panel)
         lay.addSpacing(4)
 
         lay.addSpacing(4)
 
-        today_hdr, _ = _hx_header("TODAY://", "")
+        today_hdr = QLabel("◈ TODAY")
+        today_hdr.setFont(_hud_font(7, QFont.Weight.Bold))
+        today_hdr.setStyleSheet(f"color: {C.PRI}; background: transparent; "
+                                 f"border-bottom: 1px solid {C.BORDER}; padding-bottom: 4px;")
         lay.addWidget(today_hdr)
 
         today_panel = QWidget()
@@ -4697,7 +4258,7 @@ class MainWindow(QMainWindow):
         self._interrupt_btn.setStyleSheet(f"""
             QPushButton {{
                 background: #140008; color: {C.MUTED_C};
-                border: 1px solid {C.MUTED_C}; border-radius: 12px;
+                border: 1px solid {C.MUTED_C}; border-radius: 8px;
             }}
             QPushButton:hover {{
                 background: #200010; border: 1px solid #ff6688;
@@ -4724,7 +4285,7 @@ class MainWindow(QMainWindow):
         _BTN_STYLE_PRI = f"""
             QPushButton {{
                 background: #00091a; color: {C.PRI};
-                border: 1px solid {C.PRI_DIM}; border-radius: 12px;
+                border: 1px solid {C.PRI_DIM}; border-radius: 8px;
                 text-align: left; padding: 0 8px;
             }}
             QPushButton:hover {{ background: {C.PRI_GHO}; border-color: {C.PRI}; }}
@@ -4732,7 +4293,7 @@ class MainWindow(QMainWindow):
         _BTN_STYLE_DIM = f"""
             QPushButton {{
                 background: transparent; color: {C.TEXT_MED};
-                border: 1px solid {C.BORDER}; border-radius: 12px;
+                border: 1px solid {C.BORDER}; border-radius: 8px;
                 text-align: left; padding: 0 8px;
             }}
             QPushButton:hover {{ color: {C.PRI}; border-color: {C.BORDER_B}; }}
@@ -4834,7 +4395,7 @@ class MainWindow(QMainWindow):
         self._input.setStyleSheet(f"""
             QLineEdit {{
                 background: #000d14; color: {C.WHITE};
-                border: 1px solid {C.BORDER}; border-radius: 12px; padding: 3px 7px;
+                border: 1px solid {C.BORDER}; border-radius: 8px; padding: 3px 7px;
             }}
             QLineEdit:focus {{ border: 1px solid {C.PRI}; }}
         """)
@@ -4848,7 +4409,7 @@ class MainWindow(QMainWindow):
         send.setStyleSheet(f"""
             QPushButton {{
                 background: {C.PANEL}; color: {C.PRI};
-                border: 1px solid {C.PRI_DIM}; border-radius: 12px;
+                border: 1px solid {C.PRI_DIM}; border-radius: 8px;
             }}
             QPushButton:hover {{ background: {C.PRI_GHO}; border: 1px solid {C.PRI}; }}
         """)
@@ -4873,61 +4434,14 @@ class MainWindow(QMainWindow):
 
         self._reminders_panel = RemindersPanel()
         self._calendar_panel  = CalendarPanel()
-        self._sys_matrix      = SystemsMatrix()
-        self._sys_matrix.feature_clicked.connect(self._on_feature_clicked)
-        self._earth_globe     = GeoIntelPanel()
+        self._earth_globe     = EarthGlobe()
         self._earth_globe.set_expand_callback(self._open_global_ops)
-        self._earth_globe.set_gods_eye_callback(self._gev_fly_home)
 
-        col = QVBoxLayout(); col.setSpacing(8)
-        col.addWidget(self._reminders_panel, stretch=1)
-        col.addWidget(self._calendar_panel, stretch=1)
-        lay.addLayout(col, stretch=2)
-        lay.addWidget(self._sys_matrix, stretch=3)
-        lay.addWidget(self._earth_globe, stretch=4)
+        lay.addWidget(self._reminders_panel, stretch=1)
+        lay.addWidget(self._calendar_panel, stretch=1)
+        lay.addWidget(self._earth_globe, stretch=2)
 
         return w
-
-    _FEATURE_PROMPTS = {
-        "WEB SEARCH": "Search the web for ", "EMAIL": "Check my unread email",
-        "CALENDAR": "What's on my calendar today?", "REMINDERS": "What are my open reminders?",
-        "HABITS": "How are my habits going?", "FOCUS": "Start a 25 minute focus session",
-        "WEATHER": "What's the weather right now?", "FLIGHTS": "Find flights from ",
-        "MESSAGES": "Send a message to ", "SYSTEM": "What's my system status?",
-        "MEDIA": "Play on YouTube: ", "NOTES": "Add a note to Obsidian: ",
-        "VISION": "What's on my screen?", "CODE / DEV": "Help me write code for ",
-        "BROWSER": "Open in the browser: ", "APPS": "Open app ", "FILES": "Find the file ",
-        "PC CONTROL": "Set volume to ", "MEMORY": "Remember that ",
-    }
-
-    def _on_feature_clicked(self, label: str):
-        """Clicking a Systems Matrix tile pre-fills the command box with a
-        ready-to-send prompt for that feature."""
-        if label == "GOD'S EYE":
-            self._open_gods_eye(); return
-        if label == "VOICE LINK":
-            self._toggle_mute() if hasattr(self, "_toggle_mute") else None; return
-        prompt = self._FEATURE_PROMPTS.get(label)
-        inp = getattr(self, "_input", None)
-        if prompt and inp is not None:
-            inp.setText(prompt); inp.setFocus(); inp.end(False)
-
-    def _gev_fly_home(self):
-        loc = getattr(self._earth_globe, "_loc", None)
-        self._open_gods_eye()
-        if loc:
-            lat, lon = loc[0], loc[1]
-            def _fly():
-                try:
-                    from actions.gods_eye import run_tool
-                    run_tool("fly_to_location", {"latitude": lat, "longitude": lon, "label": loc[2] or "Home"}, timeout=60)
-                except Exception as e:
-                    print(f"[UI] GEV fly-home failed: {e}")
-            threading.Thread(target=_fly, daemon=True).start()
-
-    def tool_event(self, tool: str, phase: str, detail: str = ""):
-        """Thread-safe: main.py calls this around every tool execution."""
-        self._tool_sig.emit(tool, phase, detail or "")
 
     def _open_global_ops(self):
         """Opens the full-screen Global Ops page (⛶ EXPAND on the Location
@@ -4994,7 +4508,7 @@ class MainWindow(QMainWindow):
         dismiss.setStyleSheet(f"""
             QPushButton {{
                 background: transparent; color: {C.TEXT_DIM};
-                border: 1px solid {C.BORDER}; border-radius: 10px; padding: 0 5px;
+                border: 1px solid {C.BORDER}; border-radius: 6px; padding: 0 5px;
             }}
             QPushButton:hover {{ color: {C.TEXT}; border-color: {C.BORDER_B}; }}
         """)
@@ -5019,7 +4533,7 @@ class MainWindow(QMainWindow):
                 background: {C.DARK};
                 color: {C.TEXT};
                 border: 1px solid {C.BORDER};
-                border-radius: 12px;
+                border-radius: 8px;
                 padding: 6px 8px;
                 selection-background-color: {C.PRI_GHO};
             }}
@@ -5027,7 +4541,7 @@ class MainWindow(QMainWindow):
                 background: {C.BG}; width: 6px; border: none;
             }}
             QScrollBar::handle:vertical {{
-                background: {C.BORDER_B}; border-radius: 12px; min-height: 16px;
+                background: {C.BORDER_B}; border-radius: 8px; min-height: 16px;
             }}
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 height: 0; border: none;
@@ -5207,7 +4721,7 @@ class MainWindow(QMainWindow):
             self._autostart_btn.setStyleSheet(f"""
                 QPushButton {{
                     background: #001a08; color: {C.GREEN};
-                    border: 1px solid {C.GREEN_D}; border-radius: 12px;
+                    border: 1px solid {C.GREEN_D}; border-radius: 8px;
                 }}
                 QPushButton:hover {{ background: #002010; }}
             """)
@@ -5216,7 +4730,7 @@ class MainWindow(QMainWindow):
             self._autostart_btn.setStyleSheet(f"""
                 QPushButton {{
                     background: transparent; color: {C.TEXT_DIM};
-                    border: 1px solid {C.BORDER}; border-radius: 12px;
+                    border: 1px solid {C.BORDER}; border-radius: 8px;
                 }}
                 QPushButton:hover {{ color: {C.TEXT}; border: 1px solid {C.BORDER_B}; }}
             """)
@@ -5235,7 +4749,7 @@ class MainWindow(QMainWindow):
             self._brief_btn.setStyleSheet(f"""
                 QPushButton {{
                     background: #001a08; color: {C.GREEN};
-                    border: 1px solid {C.GREEN_D}; border-radius: 12px;
+                    border: 1px solid {C.GREEN_D}; border-radius: 8px;
                     text-align: left; padding: 0 8px;
                 }}
                 QPushButton:hover {{ background: #002010; }}
@@ -5245,7 +4759,7 @@ class MainWindow(QMainWindow):
             self._brief_btn.setStyleSheet(f"""
                 QPushButton {{
                     background: transparent; color: {C.TEXT_DIM};
-                    border: 1px solid {C.BORDER}; border-radius: 12px;
+                    border: 1px solid {C.BORDER}; border-radius: 8px;
                     text-align: left; padding: 0 8px;
                 }}
                 QPushButton:hover {{ color: {C.TEXT}; border: 1px solid {C.BORDER_B}; }}
@@ -5370,7 +4884,7 @@ class MainWindow(QMainWindow):
             self._mute_btn.setStyleSheet(f"""
                 QPushButton {{
                     background: #140006; color: {C.MUTED_C};
-                    border: 1px solid {C.MUTED_C}; border-radius: 12px;
+                    border: 1px solid {C.MUTED_C}; border-radius: 8px;
                 }}
             """)
         else:
@@ -5378,40 +4892,19 @@ class MainWindow(QMainWindow):
             self._mute_btn.setStyleSheet(f"""
                 QPushButton {{
                     background: #00140a; color: {C.GREEN};
-                    border: 1px solid {C.GREEN}; border-radius: 12px;
+                    border: 1px solid {C.GREEN}; border-radius: 8px;
                 }}
                 QPushButton:hover {{ background: #001f10; }}
             """)
 
-    def _poll_gev_state(self):
-        try:
-            from actions import gods_eye as _ge
-            if _ge.is_connected():
-                self._sys_matrix.set_feature_state("GOD'S EYE", "live", "linked")
-        except Exception:
-            pass
-
-    def _set_mode(self, mode: str):
-        gev = mode == "gev"
-        self._main_stack.setCurrentIndex(1 if gev else 0)
-        self._left_panel.setVisible(not gev)
-        for k, b in self._mode_btns.items():
-            b.setChecked(k == mode)
-
-    def _on_gev_show(self, url: str):
-        self._set_mode("gev")
-        self._gev_panel.load(url)
-
     def _open_gods_eye(self):
-        self._set_mode("gev")
         self._toast.show_msg("Launching God's Eye View…")
-        self._gev_panel.set_status("Starting server…")
         def _run():
             try:
                 from actions.gods_eye import launch
-                self._log_sig.emit(f"SYS: {launch(open_browser=not self._gev_panel.embedded)}")
+                self._log.append_log(f"SYS: {launch()}")
             except Exception as e:
-                self._log_sig.emit(f"SYS: God's Eye error: {e}")
+                self._log.append_log(f"SYS: God's Eye error: {e}")
         threading.Thread(target=_run, daemon=True).start()
 
     def _focus_input(self):
@@ -5545,10 +5038,6 @@ class JarvisUI:
 
     def set_state(self, state: str):
         self._win._state_sig.emit(state)
-
-    def tool_event(self, tool: str, phase: str, detail: str = "") -> None:
-        """Report tool activity to the Systems Matrix dashboard (thread-safe)."""
-        self._win.tool_event(tool, phase, detail)
 
     def write_log(self, text: str):
         self._win._log_sig.emit(text)

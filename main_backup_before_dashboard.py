@@ -980,10 +980,6 @@ class JarvisLive:
         args = dict(fc.args or {})
 
         print(f"[JARVIS] 🔧 {name}  {args}")
-        try:
-            self.ui.tool_event(name, "run", json.dumps(args, default=str)[:120])
-        except Exception:
-            pass
         self.ui.set_state("THINKING")
 
         if name == "save_memory":
@@ -1226,11 +1222,6 @@ class JarvisLive:
             self.ui.set_state("LISTENING")
 
         print(f"[JARVIS] 📤 {name} → {str(result)[:80]}")
-        try:
-            _failed = str(result).startswith(("Tool '", "Unknown tool")) or '"ok": false' in str(result)[:200]
-            self.ui.tool_event(name, "error" if _failed else "done", str(result)[:140])
-        except Exception:
-            pass
         return types.FunctionResponse(
             id=fc.id, name=name,
             response={"result": result}

@@ -110,6 +110,10 @@ def meeting_prep(
     player=None,
     session_memory=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher (the
+    "meeting_prep" tool). A good example of one tool composing others
+    directly by import rather than via Gemini — it calls into
+    calendar_control.py and obsidian_control.py's functions itself."""
     params = parameters or {}
     action = params.get("action", "prep_meeting").lower().strip()
     result = "Unknown meeting_prep action."

@@ -1,3 +1,26 @@
+"""
+screen_processor.py — screen/camera capture backing the "screen_process" tool.
+
+What main.py ACTUALLY uses from this file: just _capture_screen() and
+_capture_camera() (see main.py's top-level import). When Gemini calls the
+"screen_process" tool, main.py's _execute_tool grabs a frame with one of
+these two functions and injects it as an image part directly into the
+*existing* live conversation (self.session.send_client_content with
+inline_data) — see main.py's screen_process handling in _execute_tool and
+the vision-injection block in _receive_audio. That keeps vision answers in
+the same voice conversation instead of a separate channel.
+
+_VisionSession / _ensure_session / screen_process() / warmup_session()
+below are a DIFFERENT, self-contained approach: a second, independent
+Gemini Live session dedicated purely to vision (its own asyncio event loop
+on a background thread, its own send/recv/play audio loops — notice this
+is the file requiring Python 3.11+ for asyncio.TaskGroup/except*). As of
+this codebase, nothing in main.py imports or calls into this class or these
+functions — they're not part of the active code path. Worth knowing if
+you're reading this file expecting it to explain what happens today: skip
+straight to _capture_screen/_capture_camera above.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -108,6 +131,8 @@ def _compress(img_bytes: bytes, source_format: str = "PNG") -> tuple[bytes, str]
         return img_bytes, f"image/{source_format.lower()}"
 
 def _capture_screen() -> tuple[bytes, str]:
+    """Grabs the primary monitor via mss, returns (compressed_bytes, mime_type)
+    — this is what main.py calls for the "screen_process" tool's angle='screen'."""
 
     if not _MSS:
         raise RuntimeError("mss is not installed. Run: pip install mss")
@@ -174,6 +199,9 @@ def _get_camera_index() -> int:
 
 
 def _capture_camera() -> tuple[bytes, str]:
+    """Grabs one frame from the webcam via OpenCV, returns
+    (compressed_bytes, mime_type) — what main.py calls for the
+    "screen_process" tool's angle='camera'."""
     if not _CV2:
         raise RuntimeError("OpenCV (cv2) is not installed. Run: pip install opencv-python")
 

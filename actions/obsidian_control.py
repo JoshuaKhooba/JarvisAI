@@ -581,6 +581,10 @@ def obsidian_control(
     player=None,
     session_memory=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher (the
+    "obsidian_control" tool). Dispatches on parameters["action"] to the
+    matching _* helper above — see the module docstring for the full list
+    of actions and what each one does."""
     params = parameters or {}
     action = params.get("action", "").lower().strip()
 

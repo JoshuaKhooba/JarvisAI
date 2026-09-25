@@ -1,7 +1,19 @@
 """
-BackgroundMonitor — user-configured topic watching.
-Checks DDG news once per day per topic; alerts JARVIS when a new headline appears.
-No crypto, no finance, no uninvited tracking.
+background_monitor.py — user-configured topic watching.
+
+Two ways this gets used, both imported directly by main.py (there's no
+single dispatcher function like other action modules):
+  - add_monitor / remove_monitor / list_monitors are called directly from
+    a tool-dispatch branch in main.py's _execute_tool when the user asks
+    to start/stop/list watched topics.
+  - check_all() is polled once every 30 minutes by main.py's own
+    _run_background_monitor background task (not by Gemini) — it checks
+    DDG news for each watched topic and returns any new headline (by
+    hash, so the same story never re-triggers) as a spoken alert string.
+
+_is_blocked / _BLOCKED is a hard-coded content guardrail: crypto/finance
+topics are refused at add_monitor() regardless of what the user asks —
+this isn't configurable, by design (see readme).
 """
 import hashlib
 import json

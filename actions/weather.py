@@ -12,6 +12,11 @@ directly instead of trying to script that app.
 
 Result is cached in-process per rounded lat/lon for a few minutes, so
 repeated calls (e.g. a UI refresh timer) don't hammer the API.
+
+Not to be confused with actions/weather_report.py — that one is the
+Gemini "weather_report" voice tool (opens a browser search, no structured
+data). This module is not a Gemini tool at all; it's called directly by
+ui.py's GlobalOpsOverlay for its on-screen readout.
 """
 
 import time

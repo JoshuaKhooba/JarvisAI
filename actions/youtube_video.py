@@ -1,4 +1,17 @@
-#youtube_video.py
+"""
+youtube_video.py — the "youtube_video" tool (see main.py TOOL_DECLARATIONS).
+
+Four actions, each an _handle_* function dispatched via _ACTION_MAP:
+  play      — finds a matching video (scraping YouTube search results
+              directly, no official API key needed) and opens it.
+  summarize — pulls the video's transcript (youtube-transcript-api) and
+              asks Gemini to summarize it; optionally saves the summary.
+  get_info  — scrapes title/channel/view-count/etc. for a given URL.
+  trending  — scrapes YouTube's trending page for a region.
+
+youtube_video(...) is the entry point main.py's tool dispatcher calls; it
+reads parameters["action"] and calls the matching handler above.
+"""
 import json
 import re
 import sys
@@ -414,6 +427,8 @@ def youtube_video(
     session_memory=None,
     speak=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher — looks up
+    parameters["action"] in _ACTION_MAP and calls the matching handler."""
     params = parameters or {}
     action = params.get("action", "play").lower().strip()
 

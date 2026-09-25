@@ -30,3 +30,4 @@ qrcode[pil]
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
+PyQt6-WebEngine>=6.11

@@ -279,6 +279,9 @@ def calendar_control(
     player=None,
     session_memory=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher (the
+    "calendar_control" tool) — routes on parameters["action"]; see the
+    module docstring for the full action list."""
     if not _is_mac():
         return "Calendar control is only available on macOS."
 

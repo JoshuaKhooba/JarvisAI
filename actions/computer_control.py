@@ -1,4 +1,26 @@
-#computer_control.py
+"""
+computer_control.py — the "computer_control" tool (see main.py TOOL_DECLARATIONS).
+
+Low-level mouse/keyboard automation via pyautogui: click, type, hotkey,
+scroll, drag, clipboard read/paste, screenshots, window focus, and filling
+forms with realistic fake test data (_random_data — names, emails, etc.,
+for when the user just wants a form filled with placeholder data).
+
+The standout piece is _screen_find: given a natural-language description
+of a UI element ("the blue Submit button"), it takes a screenshot and asks
+Gemini's vision model to return pixel coordinates for it, so click actions
+can target "whatever looks like X" instead of needing a hardcoded position
+— this is what makes a "smart_click"-style action possible anywhere on
+screen, not just in a browser DOM (contrast with browser_control.py's
+smart_click, which instead asks Gemini for a CSS selector since it has DOM
+access there).
+
+This overlaps in places with computer_settings.py (which covers OS-level
+shortcuts like volume/brightness/window snapping) — computer_control.py is
+the more general-purpose "drive the mouse and keyboard directly" tool.
+
+computer_control(...) is the entry point main.py's tool dispatcher calls.
+"""
 import io
 import json
 import platform
@@ -311,6 +333,10 @@ def _focus_window(title: str) -> str:
     return f"focus_window: unknown OS '{os_name}'"
 
 def _screen_find(description: str) -> tuple[int, int] | None:
+    """Takes a screenshot and asks Gemini's vision model to locate the
+    center coordinates of the UI element matching `description`, in plain
+    "x,y" text (or NOT_FOUND). Returns None on any failure so callers can
+    fall back to explicit x/y coordinates instead."""
     api_key = _get_api_key()
     if not api_key:
         print("[ComputerControl] ⚠️ No API key for screen_find")

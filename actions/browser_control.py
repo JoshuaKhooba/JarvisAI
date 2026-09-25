@@ -1,3 +1,30 @@
+"""
+browser_control.py — the "browser_control" tool (see main.py TOOL_DECLARATIONS).
+
+Called by main.py's tool dispatcher whenever Gemini decides the user wants
+something done in a web browser. Two very different code paths live here:
+
+  - Native mode: simple open/search requests (go_to, search, new_tab) launch
+    the user's REAL, already-installed browser via `webbrowser`/OS `open`,
+    with their real profile and logged-in accounts — same as if they'd
+    typed the URL themselves.
+  - Automation mode: anything that needs to actually interact with a page
+    (click, type, fill_form, scroll, screenshot, ...) attaches a Playwright-
+    driven browser instance instead (_BrowserSession), since native browser
+    windows can't be scripted this way. Each named browser gets its own
+    background thread running its own asyncio event loop (one per
+    _BrowserSession) so multiple browsers/automation flows can run at once
+    without blocking each other or the caller.
+
+_SessionRegistry (`_registry`, a module-level singleton) tracks which
+automation sessions are currently open, so a follow-up command like "click
+the login button" reuses the same already-open page instead of starting a
+new browser each time.
+
+browser_control(parameters, player, ...) is the single function main.py
+actually calls — `parameters["action"]` selects which of the branches below
+runs, mirroring the "action" enum in the tool's schema in main.py.
+"""
 
 from __future__ import annotations
 
@@ -929,6 +956,14 @@ def browser_control(
     player=None,
     session_memory=None,
 ) -> str:
+    """
+    Entry point called from main.py's tool dispatcher. `parameters["action"]`
+    picks the branch: switch/list_browsers/close_all/close manage automation
+    sessions directly; go_to/search/new_tab always go through the user's
+    real native browser (see module docstring); everything else (click,
+    type, fill_form, scroll, screenshot, ...) is routed to an automation
+    _BrowserSession further down this function.
+    """
     params  = parameters or {}
     action  = params.get("action", "").lower().strip()
     browser = params.get("browser", "").lower().strip() or None

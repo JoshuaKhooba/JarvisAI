@@ -332,6 +332,9 @@ def task_manager(
     player=None,
     session_memory=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher (the
+    "task_manager" tool) — routes on parameters["action"] to the matching
+    Reminders operation. See the module docstring for the full action list."""
     if not _is_mac():
         return "Task management is only available on macOS."
 

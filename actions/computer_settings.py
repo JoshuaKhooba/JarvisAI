@@ -1,4 +1,23 @@
-#computer_settings.py
+"""
+computer_settings.py — the "computer_settings" tool (see main.py TOOL_DECLARATIONS).
+
+A big flat library of single-purpose OS-control functions (volume,
+brightness, window snap/minimize/maximize, browser/keyboard shortcuts like
+copy/paste/undo, screenshots, lock screen, WiFi toggle, restart/shutdown),
+mostly implemented via `pyautogui` (simulated key/mouse input) with a few
+OS-native calls (subprocess to osascript/powershell/etc.) where a real
+keystroke isn't reliable enough. Each function name doubles as its own
+description, so most aren't separately documented here — see ACTION_MAP
+below for the full list of recognized action names.
+
+The interesting part is _detect_action: if Gemini calls this tool with a
+free-text `description` instead of a known `action` name (e.g. the user
+just said something conversational), a *second*, smaller Gemini call
+classifies that description into one of the known actions before dispatch
+continues — a small nested LLM call used purely as an intent classifier.
+
+computer_settings(...) is the entry point main.py's tool dispatcher calls.
+"""
 import json
 import re
 import sys
@@ -587,6 +606,11 @@ _DANGEROUS_ACTIONS = {"restart", "shutdown"}
 
 
 def _detect_action(description: str) -> dict:
+    """Fallback intent classifier: when Gemini calls this tool with free
+    text (`description`) instead of a recognized `action` name, this makes
+    a small separate Gemini call asking it to pick the closest matching
+    action name (and, for a few actions, a value) from ACTION_MAP. Only
+    used when computer_settings() couldn't route on `action` directly."""
 
     from google import genai as _genai
     _client = _genai.Client(api_key=_get_api_key())
@@ -626,6 +650,13 @@ def computer_settings(
     player=None,
     session_memory=None,
 ) -> str:
+    """
+    Entry point called from main.py's tool dispatcher. Prefers
+    parameters["action"] (an exact known action name); if that's blank but
+    parameters["description"] has free text, falls back to _detect_action()
+    to classify it first. Dangerous actions (restart/shutdown) require an
+    explicit confirmed=yes on a second call before actually running.
+    """
     if not _PYAUTOGUI:
         return "pyautogui is not installed. Run: pip install pyautogui"
 

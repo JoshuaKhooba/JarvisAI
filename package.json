@@ -1,0 +1,14 @@
+{
+  "name": "jarvis-mark-l",
+  "private": true,
+  "version": "1.0.0",
+  "description": "JARVIS (MARK L) desktop assistant with God's Eye View built in.",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "start": "node scripts/dev.mjs",
+    "jarvis": "node scripts/dev.mjs --no-gev",
+    "setup": "node scripts/dev.mjs --setup-only"
+  }
+}

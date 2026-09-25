@@ -777,6 +777,15 @@ def _process_pptx(path: Path, action: str, params: dict, speak=None) -> str:
     return f"Unknown PPTX action: '{action}'. Try: summarize, extract_text, analyze"
 
 def file_processor(parameters: dict, player=None, speak=None) -> str:
+    """
+    Entry point called from main.py's tool dispatcher (the "file_processor"
+    tool). Detects the file's type from its extension (_detect_type), then
+    routes to the matching _process_* helper above based on
+    parameters["action"] — e.g. an image goes to _process_image, which
+    itself branches on action (describe/ocr/resize/convert/compress/crop).
+    Unknown file types fall back to reading raw text and asking Gemini to
+    describe it directly.
+    """
     file_path_str = parameters.get("file_path", "").strip()
     if not file_path_str:
         return "No file path provided."

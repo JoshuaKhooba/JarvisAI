@@ -173,6 +173,9 @@ def habit_tracker(
     player=None,
     session_memory=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher (the
+    "habit_tracker" tool) — routes on parameters["action"]; see the module
+    docstring for the full action list."""
     params = parameters or {}
     action = params.get("action", "").lower().strip()
     result = "Unknown habit action."

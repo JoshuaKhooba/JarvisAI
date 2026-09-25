@@ -1,3 +1,20 @@
+"""
+code_helper.py — the "code_helper" tool (see main.py TOOL_DECLARATIONS).
+
+Inline coding assistant: write new code, edit/explain/run/optimize an
+existing file, or "build" (write → run → auto-fix on error, similar in
+spirit to dev_agent.py's pipeline but for a single file rather than a
+whole project). Also supports screen_debug — take a screenshot, and ask
+Gemini's vision to diagnose an error visible on screen.
+
+If the caller doesn't specify which of these operations to perform
+(action="auto"), _detect_intent classifies the free-text description into
+one of them via a small Gemini call, with a structural (no-LLM) fallback
+if that call fails. Each _*_action function below implements one operation;
+code_helper(...) is the entry point main.py's tool dispatcher calls, which
+resolves the intent and routes to the matching _*_action.
+"""
+
 import subprocess
 import sys
 import json

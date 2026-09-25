@@ -1,3 +1,20 @@
+"""
+send_message.py — the "send_message" tool (see main.py TOOL_DECLARATIONS).
+
+Sends a chat message through a real desktop messaging app — WhatsApp,
+Telegram, Signal, Discord, Instagram, Messenger — with no API/bot tokens
+involved. Instead, _desktop_send drives the actual app UI directly: opens
+it (_open_app), searches for the contact by name (_search_in_app), presses
+Enter to open that chat, pastes the message via the clipboard
+(_paste_text, more reliable than simulated typing for emoji/non-ASCII
+text), and presses Enter to send. Instagram/Messenger use a slightly
+different flow (_send_instagram/_send_messenger) since they're typically
+browser-based rather than a dedicated desktop app.
+
+send_message(...) is the entry point main.py's tool dispatcher calls;
+_resolve_platform maps the requested platform name to the matching
+_send_* function above.
+"""
 import json
 import subprocess
 import sys
@@ -236,6 +253,9 @@ def send_message(
     player=None,
     session_memory=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher — resolves
+    parameters["platform"] via _resolve_platform and calls the matching
+    _send_* function with the receiver and message text."""
     params       = parameters or {}
     receiver     = params.get("receiver", "").strip()
     message_text = params.get("message_text", "").strip()

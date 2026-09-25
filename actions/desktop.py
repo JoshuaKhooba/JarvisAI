@@ -1,4 +1,22 @@
-#desktop.py
+"""
+desktop.py — the "desktop_control" tool (see main.py TOOL_DECLARATIONS).
+
+Wallpaper (set/get, including from a URL), desktop organization (sort
+files into folders by type, clean up, list, stats).
+
+Notable/riskier mechanism, used as a catch-all for desktop tasks that don't
+map to one of the fixed functions above: _ask_gemini_for_desktop_action
+asks Gemini to write a short Python snippet for the requested task, and
+_execute_generated_code then runs it via `exec()` — NOT arbitrary though:
+_build_sandbox() constructs a restricted globals dict exposing only a
+curated allowlist of builtins and modules (no `open`, no `import`, no
+`os.system`, no network), so generated code can only do what that sandbox
+exposes. Gemini is also instructed to reply literally "UNSAFE" for
+anything it shouldn't attempt, which _execute_generated_code refuses to
+run at all.
+
+desktop_control(...) is the entry point main.py's tool dispatcher calls.
+"""
 import os
 import sys
 import json
@@ -36,6 +54,10 @@ def _get_desktop() -> Path:
     return Path.home() / "Desktop"
 
 def _build_sandbox() -> dict:
+    """Builds the restricted globals dict that Gemini-generated code (see
+    _execute_generated_code) runs against — a small allowlist of builtins
+    and read-mostly modules, deliberately excluding things like `open`,
+    `import`, or network access."""
     import time
 
     safe_builtins = {
@@ -81,6 +103,9 @@ def _build_sandbox() -> dict:
 
 
 def _execute_generated_code(code: str, player=None) -> str:
+    """Runs `code` (from _ask_gemini_for_desktop_action) via exec() inside
+    _build_sandbox()'s restricted globals, capturing print() output as the
+    return value. Refuses outright if Gemini replied "UNSAFE"."""
     if not code or code.strip() == "UNSAFE":
         return "This action cannot be performed safely."
 
@@ -102,6 +127,9 @@ def _execute_generated_code(code: str, player=None) -> str:
 
 
 def _ask_gemini_for_desktop_action(task: str) -> str:
+    """Asks Gemini to write a short Python snippet accomplishing `task`
+    using only the sandbox's allowlisted names (see _build_sandbox), or to
+    reply "UNSAFE" if it can't be done within those limits."""
 
     from google import genai as _genai
     _client = _genai.Client(api_key=_get_api_key())

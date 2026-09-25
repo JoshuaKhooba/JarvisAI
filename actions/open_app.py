@@ -1,3 +1,16 @@
+"""
+open_app.py — the "open_app" tool (see main.py TOOL_DECLARATIONS).
+
+Launches a native application by (fuzzy, aliased) name. _APP_ALIASES maps
+common names ("chrome", "vscode", ...) to each OS's actual app
+name/executable, since that differs across Windows/macOS/Linux; _normalize
+looks a raw name up in that table (or passes it through as-is if unknown).
+The actual launch mechanism is OS-specific (_launch_windows/_launch_macos/
+_launch_linux — `start`/AppleScript `open -a`/`xdg-open` respectively),
+picked once at import time via _OS_LAUNCHERS based on the running platform.
+
+open_app(...) is the entry point main.py's tool dispatcher calls.
+"""
 import time
 import subprocess
 import platform
@@ -243,6 +256,9 @@ def open_app(
     player=None,
     session_memory=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher — normalizes
+    parameters["app_name"] via _APP_ALIASES/_normalize, then calls the
+    OS-appropriate launcher from _OS_LAUNCHERS."""
     app_name = (parameters or {}).get("app_name", "").strip()
 
     if not app_name:

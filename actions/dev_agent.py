@@ -1,3 +1,27 @@
+"""
+dev_agent.py — the "dev_agent" tool (see main.py TOOL_DECLARATIONS).
+
+The most autonomous tool in the app: given a one-line description, it
+builds an entire small project from scratch, self-correcting errors along
+the way. Pipeline, in order:
+
+  1. _plan_project — asks Gemini to return a JSON plan: project name, a
+     dependency list, a run command, and a list of files-to-write with a
+     description of each file's contents (not the code itself yet).
+  2. _write_file (called once per planned file) — asks Gemini to generate
+     the actual file contents matching its planned description, then saves
+     it under ~/Desktop/JarvisProjects/<project_name>/.
+  3. _install_dependencies — pip/npm installs whatever the plan listed.
+  4. _run_project — actually runs the generated project's run command.
+  5. If that run fails, _fix_files feeds the error output (parsed by
+     _parse_traceback/_classify_error to guess which file and line caused
+     it) back to Gemini asking for a corrected version of the offending
+     file, then retries — looping up to MAX_FIX_ATTEMPTS times.
+
+_build_project ties steps 1-5 together; dev_agent(...) is the thin entry
+point main.py's tool dispatcher actually calls.
+"""
+
 import subprocess
 import sys
 import json
@@ -442,6 +466,9 @@ def _build_project(
     speak=None,
     player=None,
 ) -> str:
+    """Runs the full plan → write files → install deps → run → auto-fix
+    pipeline described in the module docstring, logging progress via
+    `player`/`speak` as it goes, and returns the final plain-text result."""
 
     def log(msg: str):
         print(f"[DevAgent] {msg}")
@@ -583,6 +610,8 @@ def dev_agent(
     session_memory=None,
     speak=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher — validates the
+    description is present, then hands off to _build_project()."""
     p            = parameters or {}
     description  = p.get("description", "").strip()
     language     = p.get("language", "python").strip()

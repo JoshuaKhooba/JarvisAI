@@ -1,4 +1,16 @@
-#flight_finder.py
+"""
+flight_finder.py — the "flight_finder" tool (see main.py TOOL_DECLARATIONS).
+
+No flight-pricing API is used here — instead this drives an automation
+browser (reusing actions/browser_control.py's browser_control function) to
+Google Flights, scrapes the rendered page's plain text, and asks Gemini to
+parse that unstructured text into a structured list of flight options
+(_parse_flights_with_gemini). Results are then formatted either for speech
+(_format_spoken, short) or as a saved text report (_format_text_report /
+_save_to_desktop, detailed).
+
+flight_finder(...) is the entry point main.py's tool dispatcher calls.
+"""
 import json
 import re
 import subprocess
@@ -299,6 +311,9 @@ def _save_to_desktop(content: str, origin: str, destination: str) -> str:
 
 
 def flight_finder(parameters: dict, player=None, speak=None) -> str:
+    """Entry point called from main.py's tool dispatcher — parses the
+    request params, drives Google Flights via _search_flights_browser,
+    parses the results via Gemini, and returns a spoken or saved report."""
     params = parameters or {}
 
     origin      = params.get("origin",      "").strip()

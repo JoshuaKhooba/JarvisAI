@@ -1,0 +1,241 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>GEO://INTEL</title>
+<link href="https://cdn.jsdelivr.net/npm/cesium@1.121.0/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/cesium@1.121.0/Build/Cesium/Cesium.js"></script>
+<style>
+  :root { --a:#00d4ff; --g:#34e3a0; --y:#ffd166; --r:#ff4d6a; --t:#e8eaed; --d:rgba(232,234,237,.45);
+          --glass:rgba(8,10,16,.72); --b:rgba(0,212,255,.22); }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#000; color:var(--t);
+              font-family:'JetBrains Mono','SF Mono',Menlo,monospace; }
+  #globe { position:absolute; inset:0; }
+  .cesium-viewer-bottom, .cesium-widget-credits { display:none !important; }
+  /* hacker overlays */
+  #scan { position:absolute; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
+    mix-blend-mode:multiply; }
+  #vig { position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.75) 100%); }
+  .corner { position:absolute; width:14px; height:14px; border:1px solid var(--a); opacity:.7; pointer-events:none; }
+  .tl{top:6px;left:6px;border-right:0;border-bottom:0} .tr{top:6px;right:6px;border-left:0;border-bottom:0}
+  .bl{bottom:6px;left:6px;border-right:0;border-top:0} .br{bottom:6px;right:6px;border-left:0;border-top:0}
+  .card { position:absolute; background:var(--glass); border:1px solid var(--b); border-radius:10px;
+          backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:7px 9px; font-size:10px; line-height:1.45; }
+  .k { color:var(--d); } .v { color:var(--t); } .acc { color:var(--a); } .grn { color:var(--g); } .yel{color:var(--y)}
+  .ttl { font-size:9px; letter-spacing:2px; color:var(--a); font-weight:700; margin-bottom:3px; display:flex; gap:6px; align-items:center; }
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--y); box-shadow:0 0 8px var(--y); }
+  .dot.live { background:var(--g); box-shadow:0 0 8px var(--g); animation:blink 1.6s infinite; }
+  @keyframes blink { 50% { opacity:.35 } }
+  #gps { left:10px; bottom:10px; min-width:170px; }
+  #wx  { right:10px; top:10px; min-width:150px; }
+  #hdr { left:10px; top:10px; }
+  #btns { position:absolute; right:10px; bottom:10px; display:flex; gap:5px; }
+  button { font:inherit; font-size:9px; letter-spacing:1px; color:var(--a); background:var(--glass);
+           border:1px solid var(--b); border-radius:8px; padding:4px 8px; cursor:pointer; }
+  button:hover { border-color:var(--a); background:rgba(0,212,255,.12); }
+  .big { font-size:22px; font-weight:700; color:var(--t); line-height:1; }
+  .row { display:flex; justify-content:space-between; gap:10px; }
+  .fc { display:grid; grid-template-columns:auto 1fr auto; gap:0 8px; margin-top:4px; border-top:1px solid var(--b); padding-top:4px; }
+  #log { position:absolute; left:10px; top:44px; font-size:8.5px; color:rgba(52,227,160,.75); pointer-events:none; white-space:pre; }
+  .compact #log, .compact .fc, .compact .opt, .compact #fixsrc, .compact button .lb { display:none; }
+  .compact .big { font-size:17px; }
+  .compact .card { font-size:9px; padding:5px 7px; }
+  .compact #gps { min-width:0; }
+.cesium-widget-errorPanel{display:none!important}
+#nogl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:#34e3a0;font:11px "JetBrains Mono",monospace;letter-spacing:2px;text-align:center}
+</style>
+</head>
+<body>
+<div id="nogl">WEBGL UNAVAILABLE<br>GPS + WEATHER ONLINE</div><div id="globe"></div>
+<div id="scan"></div><div id="vig"></div>
+<div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+
+<div id="hdr" class="card"><div class="ttl" style="margin:0"><span class="dot" id="fixdot"></span>GEO://INTEL <span class="k" id="fixsrc">ACQUIRING…</span></div></div>
+<div id="log"></div>
+
+<div id="wx" class="card">
+  <div class="ttl">WX://NOW</div>
+  <div class="row"><span class="big" id="wxT">--°</span><span style="text-align:right"><span class="v" id="wxC">—</span><br><span class="k">FEELS </span><span id="wxF">--°</span></span></div>
+  <div class="opt"><span class="k">HUM </span><span id="wxH">--</span>  <span class="k">UV </span><span id="wxU">--</span></div>
+  <div><span class="k">WIND </span><span id="wxW">--</span></div>
+  <div class="opt"><span class="k">PRES </span><span id="wxP">--</span>  <span class="k">RAIN </span><span id="wxR">--</span></div>
+  <div class="fc" id="wxFc"></div>
+</div>
+
+<div id="gps" class="card">
+  <div class="ttl">GPS://FIX <span class="k" id="acc"></span></div>
+  <div><span class="k">LAT </span><span class="acc" id="lat">--</span> <span class="k opt" id="latd"></span></div>
+  <div><span class="k">LON </span><span class="acc" id="lon">--</span> <span class="k opt" id="lond"></span></div>
+  <div><span class="k">LOC </span><span class="v" id="city">—</span></div>
+  <div><span class="k">T   </span><span class="grn" id="clock">--:--:--</span> <span class="k opt" id="tz"></span></div>
+  <div class="opt"><span class="k">SUN </span><span class="yel" id="sun">--</span></div>
+</div>
+
+<div id="btns"><button id="bSun" title="Day/night terminator">☀<span class="lb"> DAY/NIGHT</span></button><button id="bLock" title="Lock on my location">◎<span class="lb"> LOCK</span></button><button id="bSpin" title="Orbit view">⟲<span class="lb"> ORBIT</span></button></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const S = { lat:null, lon:null, city:'', src:'', tz:null, spin:true, entity:null };
+const logLines = [];
+function log(s) {
+  const t = new Date().toTimeString().slice(0,8);
+  logLines.push(`${t} > ${s}`); while (logLines.length > 5) logLines.shift();
+  $('log').textContent = logLines.join('\n');
+}
+function fitMode() { document.body.classList.toggle('compact', innerWidth < 430 || innerHeight < 300); }
+addEventListener('resize', fitMode); fitMode();
+
+// ── globe ───────────────────────────────────────────────────────────────
+let viewer = null;
+async function initGlobe() {
+  try {
+    Cesium.Ion.defaultAccessToken = '';
+    viewer = new Cesium.Viewer('globe', {
+      baseLayer: false, animation:false, timeline:false, geocoder:false, homeButton:false,
+      sceneModePicker:false, baseLayerPicker:false, navigationHelpButton:false, fullscreenButton:false,
+      infoBox:false, selectionIndicator:false, creditContainer: document.createElement('div'),
+      requestRenderMode:false, showRenderLoopErrors:false,
+    });
+    const esri = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
+      'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer');
+    viewer.imageryLayers.addImageryProvider(esri);
+    const g = viewer.scene.globe;
+    g.enableLighting = false; g.showGroundAtmosphere = true;
+    viewer.scene.skyAtmosphere.show = true;
+    viewer.scene.backgroundColor = Cesium.Color.BLACK;
+    viewer.scene.fog.enabled = true;
+    viewer.clock.shouldAnimate = true;
+    viewer.camera.setView({ destination: Cesium.Cartesian3.fromDegrees(-40, 20, 2.2e7) });
+    const ctl = viewer.scene.screenSpaceCameraController;
+    ctl.minimumZoomDistance = 800;
+    viewer.canvas.addEventListener('pointerdown', () => { S.spin = false; });
+    let last = performance.now();
+    viewer.scene.preRender.addEventListener(() => {
+      const now = performance.now(), dt = (now - last) / 1000; last = now;
+      if (S.spin && viewer.camera.positionCartographic.height > 3e6) viewer.camera.rotate(Cesium.Cartesian3.UNIT_Z, -0.05 * dt);
+    });
+    log('imagery link: ESRI World Imagery');
+    if (S.lat != null) placeMarker();
+  } catch (e) {
+    document.getElementById('nogl').style.display='flex';
+    log('globe error: ' + e.message);
+  }
+}
+
+function placeMarker() {
+  if (!viewer || S.lat == null) return;
+  const pos = Cesium.Cartesian3.fromDegrees(S.lon, S.lat);
+  if (S.entity) viewer.entities.remove(S.entity);
+  let t0 = performance.now();
+  S.entity = viewer.entities.add({
+    position: pos,
+    point: { pixelSize: 9, color: Cesium.Color.fromCssColorString('#00d4ff'),
+             outlineColor: Cesium.Color.WHITE, outlineWidth: 2, disableDepthTestDistance: 1.2e7 },
+    ellipse: { semiMinorAxis: new Cesium.CallbackProperty(() => 20000 + ((performance.now()-t0)%2000)/2000*180000, false),
+               semiMajorAxis: new Cesium.CallbackProperty(() => 20000 + ((performance.now()-t0)%2000)/2000*180000, false),
+               material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(() =>
+                 Cesium.Color.fromCssColorString('#00d4ff').withAlpha(0.45 * (1 - ((performance.now()-t0)%2000)/2000)), false)),
+               height: 0 },
+    label: { text: (S.city || 'YOU').toUpperCase(), font: '600 11px JetBrains Mono, monospace',
+             fillColor: Cesium.Color.fromCssColorString('#e8eaed'), outlineColor: Cesium.Color.BLACK, outlineWidth: 3,
+             style: Cesium.LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cesium.Cartesian2(0, -18),
+             disableDepthTestDistance: 1.2e7 },
+  });
+}
+
+function lock() {
+  if (!viewer || S.lat == null) return;
+  S.spin = false;
+  viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(S.lon, S.lat - 0.35, 42000),
+    orientation: { heading: 0, pitch: Cesium.Math.toRadians(-45), roll: 0 }, duration: 3.2 });
+  log(`camera lock → ${S.lat.toFixed(3)}, ${S.lon.toFixed(3)}`);
+}
+function orbit() {
+  if (!viewer) return;
+  S.spin = true;
+  const lon = S.lon ?? -40, lat = S.lat ?? 20;
+  viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat, innerWidth < 430 ? 1.5e7 : 2.2e7), duration: 2.5 });
+}
+$('bLock').onclick = lock;
+$('bSun').onclick = () => { if (!viewer) return; const g = viewer.scene.globe; g.enableLighting = !g.enableLighting; log('terminator ' + (g.enableLighting ? 'on' : 'off')); }; $('bSpin').onclick = orbit;
+
+// ── GPS readout ─────────────────────────────────────────────────────────
+const dms = (d, pos, neg) => { const a = Math.abs(d), D = Math.floor(a), m = (a - D) * 60, M = Math.floor(m), s = ((m - M) * 60).toFixed(1);
+  return `${D}°${String(M).padStart(2,'0')}'${s.padStart(4,'0')}"${d >= 0 ? pos : neg}`; };
+function setFix(lat, lon, city, src, acc) {
+  const first = S.lat == null;
+  S.lat = +lat; S.lon = +lon; if (city) S.city = city; S.src = src;
+  $('lat').textContent = S.lat.toFixed(5); $('lon').textContent = S.lon.toFixed(5);
+  $('latd').textContent = dms(S.lat, 'N', 'S'); $('lond').textContent = dms(S.lon, 'E', 'W');
+  $('city').textContent = S.city || '—';
+  $('fixsrc').textContent = src === 'gps' ? 'GPS LOCK' : src === 'config' ? 'MANUAL FIX' : 'IP TRIANGULATION';
+  $('fixdot').classList.add('live');
+  $('acc').textContent = acc ? `±${Math.round(acc)}m` : (src === 'ip' ? '±5km' : '');
+  log(`fix acquired [${src}] ${S.lat.toFixed(4)}, ${S.lon.toFixed(4)}`);
+  placeMarker();
+  if (first) setTimeout(lock, 1800);
+  fetchWeather();
+}
+// Called by JARVIS (Python) with the location it resolved.
+window.jarvisSetLocation = (lat, lon, city, src) => {
+  if (lat == null || lon == null) return;
+  if (S.src === 'gps') { if (city && !S.city) { S.city = city; $('city').textContent = city; placeMarker(); } return; }
+  setFix(lat, lon, city, src || 'ip');
+};
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    (p) => setFix(p.coords.latitude, p.coords.longitude, S.city, 'gps', p.coords.accuracy),
+    () => log('hardware GPS unavailable → using network fix'),
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 600000 });
+}
+
+setInterval(() => {
+  const o = S.tz ? { timeZone: S.tz, hour12: false } : { hour12: false };
+  try { $('clock').textContent = new Date().toLocaleTimeString('en-US', o); } catch { $('clock').textContent = new Date().toTimeString().slice(0,8); }
+}, 1000);
+
+// ── weather (Open-Meteo, no key) ────────────────────────────────────────
+const WMO = {0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Rime fog',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',
+  61:'Light rain',63:'Rain',65:'Heavy rain',66:'Freezing rain',67:'Freezing rain',71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',
+  80:'Showers',81:'Showers',82:'Violent showers',85:'Snow showers',86:'Snow showers',95:'Thunderstorm',96:'T-storm + hail',99:'T-storm + hail'};
+const ICON = (c) => c === 0 ? '☀' : c <= 2 ? '⛅' : c === 3 ? '☁' : c < 50 ? '≋' : c < 70 || (c >= 80 && c < 83) ? '☂' : c < 90 ? '❄' : '⚡';
+const compass = (d) => ['N','NE','E','SE','S','SW','W','NW'][Math.round(d / 45) % 8];
+let wxTimer = null, wxBusy = false;
+async function fetchWeather() {
+  if (S.lat == null || wxBusy) return; wxBusy = true;
+  const u = `https://api.open-meteo.com/v1/forecast?latitude=${S.lat}&longitude=${S.lon}` +
+    '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,uv_index,precipitation' +
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max' +
+    '&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=4';
+  try {
+    const d = await (await fetch(u)).json(); const c = d.current, day = d.daily;
+    S.tz = d.timezone; $('tz').textContent = d.timezone_abbreviation || '';
+    $('wxT').textContent = `${Math.round(c.temperature_2m)}°F`;
+    $('wxC').textContent = `${ICON(c.weather_code)} ${WMO[c.weather_code] || '—'}`;
+    $('wxF').textContent = `${Math.round(c.apparent_temperature)}°`;
+    $('wxH').textContent = `${c.relative_humidity_2m}%`; $('wxU').textContent = (c.uv_index ?? 0).toFixed(1);
+    $('wxW').textContent = `${Math.round(c.wind_speed_10m)} mph ${compass(c.wind_direction_10m)}`;
+    $('wxP').textContent = `${Math.round(c.surface_pressure)} hPa`; $('wxR').textContent = `${c.precipitation}"`;
+    const hm = (s) => s ? s.slice(11, 16) : '--';
+    $('sun').textContent = `↑${hm(day.sunrise[0])}  ↓${hm(day.sunset[0])}`;
+    const names = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    $('wxFc').innerHTML = day.time.slice(1, 4).map((t, i) => {
+      const k = i + 1, dn = names[new Date(t + 'T12:00').getDay()];
+      return `<span class="k">${dn}</span><span>${ICON(day.weather_code[k])} <span class="k">${day.precipitation_probability_max[k] ?? 0}%</span></span>` +
+             `<span>${Math.round(day.temperature_2m_max[k])}°<span class="k">/${Math.round(day.temperature_2m_min[k])}°</span></span>`;
+    }).join('');
+    log(`wx sync ok · ${WMO[c.weather_code] || c.weather_code}`);
+    window.__jarvisWeather = { temp: c.temperature_2m, cond: WMO[c.weather_code], wind: c.wind_speed_10m };
+  } catch (e) { log('wx sync failed: ' + e.message); }
+  wxBusy = false;
+  clearTimeout(wxTimer); wxTimer = setTimeout(fetchWeather, 10 * 60 * 1000);
+}
+
+log('boot GEO://INTEL');
+if (window.Cesium) initGlobe(); else log('Cesium offline — check network');
+</script>
+</body>
+</html>

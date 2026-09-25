@@ -1,4 +1,23 @@
-#web_search.py
+"""
+web_search.py — the "web_search" tool (see main.py TOOL_DECLARATIONS).
+
+Multi-backend web search with a "first to answer wins" race (_race, below)
+across whichever of these are configured: Gemini's own grounded search,
+DuckDuckGo (always available, no key needed), Google Programmable Search,
+and Tavily — so a slow or quota-exhausted backend never blocks the answer,
+and a backend that hedges/refuses instead of answering (_is_refusal) is
+treated as a failure so a real DDG result can still win instead.
+
+Five modes, each a thin wrapper around _race with different formatting:
+  search  (_search)  — general web search
+  news    (_news)    — latest headlines on a topic
+  research(_research)— deeper, more comprehensive answer
+  price   (_price)   — product price lookup
+  compare (_compare) — side-by-side comparison of multiple items
+
+web_search(...) is the entry point main.py's tool dispatcher calls; it
+reads parameters["mode"] and routes to the matching function above.
+"""
 import json
 import re
 import sys
@@ -475,6 +494,8 @@ def web_search(
     player=None,
     session_memory=None,
 ) -> str:
+    """Entry point called from main.py's tool dispatcher — routes on
+    parameters["mode"] to _search/_news/_research/_price/_compare."""
     params = parameters or {}
     query  = params.get("query", "").strip()
     mode   = params.get("mode",  "search").lower().strip()
